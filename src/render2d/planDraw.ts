@@ -15,7 +15,7 @@ import { doorsOnFloor } from "../view/doors";
 import { tubeAt } from "../view/gallery";
 import { roomLook } from "../view/roomFinish";
 import { stackSpots } from "../view/stackSpots";
-import { shade, tint } from "./art";
+import { drawGlyph, shade, tint } from "./art";
 import { corridorStrip } from "./corridorArt";
 import { CATEGORY_COLORS } from "./palette";
 import type { EffectField } from "../sim/effects";
@@ -406,6 +406,9 @@ export function drawStackSpots(g: GraphicsContext, l: Layout, floor: number): vo
   for (const spot of stackSpots(l, floor)) {
     for (const c of spot.cells) g.poly(cellSector(l.hole, c, 0.6)).fill({ color: C.stackGhost, alpha: 0.08 });
     outlineCells(g, l.hole, spot.cells, C.stackGhost, 2, false, 0.6);
+    // What could go there: the stairs' (or lift's) own glyph, faint.
+    const centre = roomCentre(l.hole, spot.cells);
+    drawGlyph(g, spot.type, centre.x, centre.y, Math.min(28, centre.size * 0.6), C.stackGhost);
   }
 }
 

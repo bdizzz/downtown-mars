@@ -1171,17 +1171,87 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     return plusMat;
   }
 
+  /** Ghost badges (#520), one per kind: a dark disc ringed in the ghost colour, with steps (stairs) or a lift car. */
+  const ghostMats = new Map<string, THREE.SpriteMaterial>();
+  function ghostBadge(type: string): THREE.SpriteMaterial {
+    const kind = type === "elevator" ? "lift" : type === "spiral_stair" ? "spiral" : "stairs";
+    let m = ghostMats.get(kind);
+    if (m) return m;
+    const c = document.createElement("canvas");
+    c.width = c.height = 64;
+    const g = c.getContext("2d")!;
+    const ink = `#${STACK_GHOST.toString(16).padStart(6, "0")}`;
+    g.fillStyle = "rgba(26, 15, 13, 0.75)";
+    g.strokeStyle = ink;
+    g.lineWidth = 3;
+    g.setLineDash([6, 4]);
+    g.beginPath();
+    g.arc(32, 32, 28, 0, Math.PI * 2);
+    g.fill();
+    g.stroke();
+    g.setLineDash([]);
+    g.lineWidth = 4;
+    g.lineCap = g.lineJoin = "round";
+    g.beginPath();
+    if (kind === "lift") {
+      g.strokeRect(22, 14, 20, 36);
+      for (const [y0, y1] of [[30, 22], [34, 42]] as const) {
+        g.moveTo(26, y0);
+        g.lineTo(32, y1);
+        g.lineTo(38, y0);
+      }
+    } else if (kind === "spiral") {
+      g.moveTo(32, 32);
+      for (let i = 1; i <= 24; i++) {
+        const a = (i / 24) * Math.PI * 3;
+        const r = 2 + (i / 24) * 16;
+        g.lineTo(32 + Math.cos(a) * r, 32 + Math.sin(a) * r);
+      }
+    } else {
+      // Steps going down.
+      g.moveTo(16, 18);
+      for (let i = 0; i < 4; i++) {
+        g.lineTo(16 + 8 * (i + 1), 18 + 8 * i);
+        g.lineTo(16 + 8 * (i + 1), 18 + 8 * (i + 1));
+      }
+    }
+    g.stroke();
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    m = new THREE.SpriteMaterial({ map: tex, depthTest: false, depthWrite: false, transparent: true, opacity: 0.85 });
+    ghostMats.set(kind, m);
+    return m;
+  }
+
+  /** A ghost marker (#520): a faint wash and a dashed outline over the spot, and a badge saying stairs or lift. */
+  function stackGhost(type: string, cells: Cell[]): void {
+    if (!layout || !cells.length) return;
+    fillCells(cells, STACK_GHOST, 0.12);
+    const geo = roomGeometry(layout, cells);
+    const edges = new THREE.LineSegments(outlineGeometry(geo), overlayMat(`dash:${STACK_GHOST}`, () => withWallsDown(new THREE.LineDashedMaterial({ color: STACK_GHOST, dashSize: 1.6, gapSize: 1, depthTest: false, transparent: true }))));
+    edges.computeLineDistances();
+    edges.renderOrder = 10;
+    overlay.add(edges);
+    geo.dispose();
+    spriteOver(cells[0]!, ghostBadge(type), 5, true);
+  }
+
   /** A plus floating over a slot: the piece being added to stairs or an elevator. */
   function plusOver(p: Cell): void {
+    spriteOver(p, plusMaterial(), 2.2);
+  }
+
+  /** A sprite floating mid-height over a slot, kept sharp on the label layer. */
+  function spriteOver(p: Cell, mat: THREE.SpriteMaterial, size: number, centred = false): void {
     if (!layout) return;
     const n = layout.hole.ringSlots[p.ring - 1]!;
     const [a0, a1] = slotAngles(p.slot, n);
     const [r0, r1] = ringRadii(layout.hole, p.ring);
     const [y0, y1] = floorSpan(p.floor);
     const a = (a0 + a1) / 2;
-    const r = p.ring === 1 ? r0 - 0.4 : (r0 + r1) / 2;
-    const plus = new THREE.Sprite(plusMaterial());
-    plus.scale.set(2.2, 2.2, 1);
+    const r = p.ring === 1 && !centred ? r0 - 0.4 : (r0 + r1) / 2;
+    const plus = new THREE.Sprite(mat);
+    plus.scale.set(size, size, 1);
     plus.position.set(r * Math.cos(a), (y0 + y1) / 2, r * Math.sin(a));
     plus.renderOrder = 11;
     plus.layers.set(LABEL_LAYER);
@@ -1312,7 +1382,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     const spots = tool?.kind === "build" && cut() === null && view.mode !== "walk" ? surfaceSpots(layout, tool.room) : [];
     surfaceSpotTint(spots, HOVER.ok, SPOTS.faint);
     // Where stairs and elevators could reach a floor further: faint outlines, the one under the pointer below.
-    if (showsStackSpots()) for (const g of stackSpots(layout, cut()!)) outline(g.cells, STACK_GHOST);
+    if (showsStackSpots()) for (const g of stackSpots(layout, cut()!)) stackGhost(g.type, g.cells);
     // Walking, what's under the pointer isn't outlined (a click still picks it).
     if (!info || view.mode === "walk") return;
     const p = info.pick;
@@ -3035,6 +3105,10 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       overlayMats.forEach((m) => m.dispose());
       plusMat?.map?.dispose();
       plusMat?.dispose();
+      ghostMats.forEach((m) => {
+        m.map?.dispose();
+        m.dispose();
+      });
       percentMats.forEach((m) => {
         m.map?.dispose();
         m.dispose();
