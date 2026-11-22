@@ -557,7 +557,7 @@ export function ToolBar({ tool, setTool, resources, rotate, highlight, deposits,
           <Icon id="demolish" size={15} />
           Demolish
         </span>
-        <span className="dock-hint">Click a room: half its cost comes back (a blueprint's, all of it)</span>
+        <span className="dock-hint">Click a room: half its cost comes back (a blueprint's, all of it). Click a corridor to fill it in</span>
         {done}
       </div>
     );
