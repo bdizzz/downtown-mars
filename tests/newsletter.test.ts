@@ -9,7 +9,7 @@ import { makeSnapshot } from "../src/sim/snapshot";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
 import { createWorld } from "../src/sim/world";
-import { unreadIssue, writeNewsletter } from "../src/view/newsletter";
+import { columnSplit, unreadIssue, writeNewsletter } from "../src/view/newsletter";
 
 // #424: The Hole Truth, a monthly newsletter from the month's facts.
 
@@ -169,3 +169,19 @@ function blank() {
     finds: [], milestones: [], festival: false, storm: false, outcomes: [], newNotables: [], grumble: null, praise: null,
   };
 }
+
+describe("the paper's columns (#588)", () => {
+  it("sets two items side by side, however unequal", () => {
+    expect(columnSplit([300, 120])).toBe(1);
+    expect(columnSplit([120, 300])).toBe(1);
+  });
+  it("gives a lone item the whole width", () => {
+    expect(columnSplit([200])).toBe(1);
+    expect(columnSplit([])).toBe(0);
+  });
+  it("splits where the two columns come out nearest the same length, in reading order", () => {
+    expect(columnSplit([100, 100, 100, 100])).toBe(2);
+    expect(columnSplit([500, 100, 100, 100])).toBe(1);
+    expect(columnSplit([100, 100, 100, 500])).toBe(3);
+  });
+});

@@ -9,6 +9,7 @@ import { surfaceRingOf, type Cell, type Layout, type RoomInstance, type SurfaceS
 import { cropStagesKey } from "../view/furnish";
 import type { Snapshot } from "../sim/snapshot";
 import { HEAT } from "../render2d/palette";
+import { cameraDragFor, turnKeyHeld, type CameraDrag } from "../view/cameraDrag";
 import { aimKeyFor, clickWith, CORRIDOR_MAP as MAP, corridorMap, demolishHoverFor, mapJoints, haloEffect, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor, surfaceSpots } from "../view/interaction";
 import { EMPTY_CHAIN, extendChain, type Chain, type ChainPoint } from "../view/corridorPlan";
 import { tubeRuns, type TubeRun } from "../view/gallery";
@@ -1710,6 +1711,13 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
 
   /** Shift erases with the corridor tool. */
   let shift = false;
+  /** ⌘ or Ctrl is held (#585): a drag only moves the camera, so the ghost hides and clicks don't place. */
+  let turnKey = false;
+
+  /** Is the turn key held with a tool in hand (outside first person)? Then the tool waits. */
+  function looking(): boolean {
+    return turnKey && !!tool && view.mode !== "walk";
+  }
 
   /** The border nearest the point the last pick landed on. */
   function edgeAtPick(p: Pick): Edge | null {
@@ -1731,7 +1739,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   }
 
   function hoverInfo(): HoverInfo | null {
-    if (!layout || !pointer) return null;
+    if (!layout || !pointer || looking()) return null;
     rayAt(pointer.clientX, pointer.clientY);
     const p = pickRay(raycaster.ray);
     if (tool?.kind === "corridor") return edgeHoverFor(layout, resources, tool, p, edgeAtPick(p), shift);
@@ -1761,7 +1769,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
 
   function refreshHover(force = false): void {
     const info = hoverInfo();
-    const key = hoverKeyFor(info, tool, layout?.version ?? -1, selected) + view.mode + building + cut();
+    const key = hoverKeyFor(info, tool, layout?.version ?? -1, selected) + view.mode + building + cut() + looking();
     const changed = key !== hoverKey;
     if (!force && !changed) return;
     hoverKey = key;
@@ -1945,6 +1953,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   const onBlur = () => {
     held.clear();
     isoHeld.clear();
+    setTurnKey(false);
   };
   window.addEventListener("blur", onBlur);
   const onLockChange = () => {
@@ -2120,7 +2129,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
 
   // ---- input ----
 
-  let drag: { x: number; y: number; moved: number } | null = null;
+  /** A press under way: how far it's moved; with a key held, what it does to the camera, and whether it can still click. */
+  let drag: { x: number; y: number; moved: number; camera: CameraDrag | null; clicks: boolean } | null = null;
 
   // Fingers: two pinch, twist and pan; a long press shows the hover; with a tool, tap to aim, tap again to act.
   const touches = new Touches();
@@ -2137,13 +2147,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     cam.theta -= g.turn;
     if (view.mode === "iso") {
       cam.iso /= g.scale;
-      // Grab the ground: it follows the fingers.
-      const per = cam.iso / Math.max(1, canvas.clientHeight);
-      const [fx, fz] = [-Math.cos(cam.theta), -Math.sin(cam.theta)];
-      const [rx, rz] = [-fz, fx];
-      cam.panX += (g.dy * fx - g.dx * rx) * per;
-      cam.panZ += (g.dy * fz - g.dx * rz) * per;
-      keepPanNear();
+      panBy(g.dx, g.dy);
     } else {
       cam.out /= g.scale;
       cutawayFitted = false;
@@ -2151,6 +2155,26 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       cam.y += g.dy * 0.15;
     }
     applyCamera();
+  }
+
+  /** Grab the ground and move it: Free view pans across it, the cutaway goes up and down. */
+  function panBy(dx: number, dy: number): void {
+    if (view.mode === "iso") {
+      const per = cam.iso / Math.max(1, canvas.clientHeight);
+      const [fx, fz] = [-Math.cos(cam.theta), -Math.sin(cam.theta)];
+      const [rx, rz] = [-fz, fx];
+      cam.panX += (dy * fx - dx * rx) * per;
+      cam.panZ += (dy * fz - dx * rz) * per;
+      keepPanNear();
+    } else cam.y += dy * 0.15;
+  }
+
+  /** The turn key went down or up: the ghost hides or comes back, and the cursor says the camera is in hand. */
+  function setTurnKey(on: boolean): void {
+    if (on === turnKey) return;
+    turnKey = on;
+    if (!drag) canvas.style.cursor = looking() ? "grab" : "";
+    refreshHover(true);
   }
 
   /** A second finger came down: whatever the first was doing stops. */
@@ -2179,15 +2203,17 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     pointer = e; // a tap may arrive with no move before it
     fingerDown = isTouch(e);
     shift = e.shiftKey;
+    setTurnKey(turnKeyHeld(e));
     canvas.setPointerCapture(e.pointerId);
-    if (paints(tool) && tool?.kind === "corridor") {
+    const camera = view.mode === "walk" ? null : cameraDragFor(e, tool);
+    if (!camera && paints(tool) && tool?.kind === "corridor") {
       snaking = true;
       chainErase = followsCorridors(tool, shift);
       chain = EMPTY_CHAIN;
       snake();
       return;
     }
-    drag = { x: e.clientX, y: e.clientY, moved: 0 };
+    drag = { x: e.clientX, y: e.clientY, moved: 0, camera, clicks: !turnKeyHeld(e) };
     longPress.start(e);
   };
   const onPointerMove = (e: PointerEvent) => {
@@ -2214,6 +2240,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     }
     pointer = e;
     shift = e.shiftKey;
+    if (!isTouch(e)) setTurnKey(turnKeyHeld(e));
     if (snaking) {
       snake();
       return;
@@ -2230,7 +2257,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       // Turn your head: drag right to look right, up to look up.
       walker.yaw += dx * WALK.turn * lookSpeed;
       walker.pitch -= dy * WALK.turn * lookSpeed;
-    } else {
+    } else if (drag.camera === "pan") panBy(dx, dy);
+    else {
       // Grab the world: dragging left turns you right, dragging up takes you down (or, in iso, looks from higher up).
       cam.theta += dx * 0.005;
       if (view.mode === "iso") cam.isoElev += dy * 0.004;
@@ -2251,7 +2279,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     if (view.mode === "walk" && locked()) return;
     pointer = e;
     const finger = isTouch(e);
-    if (drag && drag.moved <= (finger ? TAP_SLOP : CLICK_SLOP) && layout && !longPress.fired) {
+    if (drag && drag.clicks && drag.moved <= (finger ? TAP_SLOP : CLICK_SLOP) && layout && !longPress.fired) {
       // With no tool, a click on a walker opens who they are (#528), over the room behind them.
       const who = !tool && graphics.life && people.group.visible ? people.pick(rayAt(e.clientX, e.clientY)) : null;
       if (who !== null) {
@@ -2268,7 +2296,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     drag = null;
     if (snaking) endSnake();
     if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
-    canvas.style.cursor = "";
+    canvas.style.cursor = looking() ? "grab" : "";
   };
   const onWheel = (e: WheelEvent) => {
     e.preventDefault();
@@ -2294,6 +2322,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   };
 
   const onKey = (e: KeyboardEvent) => {
+    if (e.key === "Meta" || e.key === "Control") setTurnKey(turnKeyHeld(e));
     if (e.key !== "Shift" || shift === (e.type === "keydown")) return;
     shift = e.type === "keydown";
     refreshHover(true);
@@ -2308,7 +2337,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   canvas.addEventListener("contextmenu", (e) => {
     e.preventDefault();
     // A long press on a touch screen opens the context menu too; it isn't a cancel.
-    if (longPress.fired || touches.count) return;
+    // Ctrl-click on a Mac opens it too: that's a camera drag starting (#585), not a cancel.
+    if (longPress.fired || touches.count || e.ctrlKey) return;
     opts.onCancel?.();
   });
   const onPointerLeave = (e: PointerEvent) => {

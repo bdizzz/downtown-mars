@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 
 import { FURNITURE_DETAILS, GRAPHICS_PRESETS, presetOf, PRESET_NAMES, type FurnitureDetail, type Graphics, type Preset } from "../view/graphics";
 import { FpsPanel } from "./FpsPanel";
 import type { Settings } from "./settings";
-import { rowsIn, SECTIONS, type SectionId, type SettingRow } from "./settingsTable";
+import { groupsIn, rowsIn, SECTIONS, type SectionId, type SettingRow } from "./settingsTable";
 
 interface Props {
   settings: Settings;
@@ -71,10 +71,7 @@ export function SettingsView({ settings, update, onBack, onKeys, tutorial, onTut
             ))}
           </div>
           <div className="settings-body" role="tabpanel" id={`sec-${tab}`} aria-labelledby={`tab-${tab}`}>
-            {rowsIn(tab).map((r) => (
-              <Row key={r.id} row={r} ctx={ctx} />
-            ))}
-            {tab === "display" && <FpsPanel graphics={settings.graphics} onGraphics={(graphics) => update({ graphics })} />}
+            <SectionRows section={tab} ctx={ctx} />
           </div>
         </>
       ) : (
@@ -82,10 +79,7 @@ export function SettingsView({ settings, update, onBack, onKeys, tutorial, onTut
           {SHOWN.map((s) => (
             <section key={s.id} aria-labelledby={`sec-${s.id}`}>
               <h3 id={`sec-${s.id}`}>{s.name}</h3>
-              {rowsIn(s.id).map((r) => (
-                <Row key={r.id} row={r} ctx={ctx} />
-              ))}
-              {s.id === "display" && <FpsPanel graphics={settings.graphics} onGraphics={(graphics) => update({ graphics })} />}
+              <SectionRows section={s.id} ctx={ctx} />
             </section>
           ))}
         </div>
@@ -94,6 +88,22 @@ export function SettingsView({ settings, update, onBack, onKeys, tutorial, onTut
         Back
       </button>
     </div>
+  );
+}
+
+/** A section's rows, each run of a group under its sub-header (#587). */
+function SectionRows({ section, ctx }: { section: SectionId; ctx: Ctx }) {
+  return (
+    <>
+      {groupsIn(section).map((g, i) => (
+        <div key={`${g.group ?? ""}-${i}`} className="set-group" role={g.group ? "group" : undefined} aria-label={g.group}>
+          {g.group && <h4>{g.group}</h4>}
+          {g.rows.map((r) => (
+            <Row key={r.id} row={r} ctx={ctx} />
+          ))}
+        </div>
+      ))}
+    </>
   );
 }
 
@@ -191,6 +201,9 @@ function Row({ row, ctx }: { row: SettingRow; ctx: Ctx }) {
         ))}
       </select>,
     );
+  }
+  if (row.control === "panel") {
+    return row.id === "fps" ? <FpsPanel graphics={ctx.settings.graphics} onGraphics={(graphics) => ctx.update({ graphics })} /> : null;
   }
   if (row.control === "button") {
     return wrap(
