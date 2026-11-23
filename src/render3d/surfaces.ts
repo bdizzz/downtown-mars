@@ -359,7 +359,46 @@ export interface Slice {
   earth: { value: THREE.Color };
   tint: { value: number };
   tintDepth: { value: number };
+  /** With the surface kept, the cut face darkens at least this much toward the backdrop, out in the sun as it is. */
+  keptShade: { value: number };
+  /** 1: keep the surface (#558, an experiment): nothing thins out with distance, so the land runs on to the horizon. */
+  keep: { value: number };
+  /** How far (metres) the cut wanders either side of its line, jagged (0: straight). See `sliceJag`. */
+  jag: { value: number };
+  /** How far the land and the wall reach past the jagged cut, so they always meet the face's coarser mesh. */
+  jagLap: { value: number };
 }
+
+/**
+ * The jagged cut (#558): how far the cut stands off its straight line where the line crosses the ground at
+ * (x, z), at height `y`, as a share of `jag` (-1 to 1). A few waves of different lengths running different ways
+ * across the ground, so it reads as broken rock, not a wave; and as the cut turns or moves with the camera, it
+ * runs through other ground and breaks differently, as if that ground were being opened up. The land's and
+ * the wall's edges (in their shaders) and the cut face's mesh (stage3d.ts) all follow it.
+ */
+const JAG_WAVES: { k: number; angle: number; up: number; phase: number; weight: number }[] = [
+  { k: 0.13, angle: 0.3, up: 0.07, phase: 0.0, weight: 0.35 },
+  { k: 0.37, angle: 1.9, up: -0.19, phase: 1.7, weight: 0.3 },
+  { k: 0.81, angle: 3.4, up: 0.41, phase: 4.1, weight: 0.2 },
+  { k: 1.9, angle: 5.1, up: -0.9, phase: 2.6, weight: 0.15 },
+];
+
+export function sliceJag(x: number, z: number, y: number): number {
+  let j = 0;
+  for (const w of JAG_WAVES) j += w.weight * Math.sin(w.k * (Math.cos(w.angle) * x + Math.sin(w.angle) * z) + w.up * y + w.phase);
+  return j;
+}
+
+const num = (v: number) => v.toFixed(4);
+const JAG_GLSL = `float sliceJag(vec2 xz, float y) {
+    return sliceJagAmount * (${JAG_WAVES.map((w) => `${num(w.weight)} * sin(${num(w.k * Math.cos(w.angle))} * xz.x + ${num(w.k * Math.sin(w.angle))} * xz.y + ${num(w.up)} * y + ${num(w.phase)})`).join(" + ")});
+  }
+  // Where the cut runs at this point: its line, jagged by the ground where the straight line passes level with
+  // the point, with the land and wall reaching a little past it.
+  float sliceLine(vec3 p) {
+    vec2 onLine = p.xz + sliceDir * (sliceOffset - dot(p.xz, sliceDir));
+    return sliceOffset + sliceJag(onLine, p.y) + sliceJagLap;
+  }`;
 
 export interface SliceLook {
   fadeFrom: number;
@@ -368,6 +407,7 @@ export interface SliceLook {
   earth: number;
   tint: number;
   tintDepth: number;
+  keptShade: number;
 }
 
 export function makeSlice(look: SliceLook): Slice {
@@ -383,6 +423,10 @@ export function makeSlice(look: SliceLook): Slice {
     earth: { value: new THREE.Color(look.earth) },
     tint: { value: look.tint },
     tintDepth: { value: look.tintDepth },
+    keptShade: { value: look.keptShade },
+    keep: { value: 0 },
+    jag: { value: 0 },
+    jagLap: { value: 0 },
   };
 }
 
@@ -391,14 +435,17 @@ export function makeSlice(look: SliceLook): Slice {
  * goes; it darkens with depth), the cut face (it fades, crumbles at the top and darkens), or the ground
  * at the cut floor past the rings (it only fades, so far off it's the backdrop, as the land above is).
  */
-export type SliceRole = "land" | "wall" | "face" | "ground";
+export type SliceRole = "land" | "wall" | "face" | "ground" | "front";
 
-const SLICE_UNIFORMS = ["On", "Amount", "Offset", "Radius", "FadeFrom", "FadeTo", "Edge", "Tint", "TintDepth"].map((u) => `uniform float slice${u};`).join("\n") + "\nuniform vec2 sliceDir;\nuniform vec3 sliceEarth;";
+const SLICE_UNIFORMS = ["On", "Amount", "Offset", "Radius", "FadeFrom", "FadeTo", "Edge", "Tint", "TintDepth", "Keep", "KeptShade", "JagAmount", "JagLap"].map((u) => `uniform float slice${u};`).join("\n") + "\nuniform vec2 sliceDir;\nuniform vec3 sliceEarth;";
 
 const SLICE_GLSL = /* glsl */ `
+  ${JAG_GLSL}
   // A stipple threshold per pixel (interleaved gradient noise): fine, even, and steady as the camera moves.
   float sliceStipple() { return fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715)))); }
   float sliceFade(vec3 p) { return smoothstep(sliceRadius + sliceFadeFrom, sliceRadius + sliceFadeTo, length(p.xz)); }
+  // The land and its cut face thin out with distance, unless the surface is kept (#558): then they run on to the horizon.
+  float sliceFar(vec3 p) { return sliceKeep > 0.5 ? 0.0 : sliceFade(p); }
   // Smooth noise over metres, for the crumbling edge.
   float sliceHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
   float sliceNoise(vec2 p) {
@@ -407,6 +454,8 @@ const SLICE_GLSL = /* glsl */ `
   }
   // How much crumbles away at d metres from the cut (1 at it, 0 past the edge), ragged by the noise at q.
   float sliceCrumble(float d, vec2 q) {
+    // Keeping the surface (#558), the sky's behind the cut, and would show through its crumbs: a clean cut.
+    if (sliceKeep > 0.5) return 0.0;
     float rough = sliceNoise(q * 0.35) * 0.65 + sliceNoise(q * 1.3) * 0.35;
     return 1.0 - smoothstep(0.0, sliceEdge, d - (rough - 0.5) * sliceEdge);
   }
@@ -417,14 +466,17 @@ const SLICE_GLSL = /* glsl */ `
 /** When a fragment goes, by role (n is its stipple threshold). */
 const SLICE_CUT: Record<SliceRole, string> = {
   // The near half and the land over the rings dissolve away; the rest thins out with distance and crumbles by the cut.
-  land: `(dot(vSlicePos.xz, sliceDir) > sliceOffset || length(vSlicePos.xz) < sliceRadius) ? n < sliceAmount
-    : n < max(sliceFade(vSlicePos), sliceCrumble(sliceOffset - dot(vSlicePos.xz, sliceDir), vSlicePos.xz)) * sliceAmount`,
+  land: `(dot(vSlicePos.xz, sliceDir) > sliceLine(vSlicePos) || length(vSlicePos.xz) < sliceRadius) ? n < sliceAmount
+    : n < max(sliceFar(vSlicePos), sliceCrumble(sliceOffset - dot(vSlicePos.xz, sliceDir), vSlicePos.xz)) * sliceAmount`,
   // The near half dissolves away.
-  wall: "dot(vSlicePos.xz, sliceDir) > sliceOffset && n < sliceAmount",
+  wall: "dot(vSlicePos.xz, sliceDir) > sliceLine(vSlicePos) && n < sliceAmount",
   // Dissolves in, thinning out with distance and crumbling along its top.
-  face: "n > sliceAmount || n < max(sliceFade(vSlicePos), sliceCrumble(-vSlicePos.y, vec2(vSlicePos.x + vSlicePos.z, vSlicePos.y)))",
-  // Thins out with distance.
-  ground: "n < sliceFade(vSlicePos) * sliceAmount",
+  face: "n > sliceAmount || n < max(sliceFar(vSlicePos), sliceCrumble(-vSlicePos.y, vec2(vSlicePos.x + vSlicePos.z, vSlicePos.y)))",
+  // Keeping the surface (#558): the front of the hole below the floor in view, which only the cut-away part of the
+  // wall keeps (just past the jagged cut, to meet the face).
+  front: "dot(vSlicePos.xz, sliceDir) < sliceLine(vSlicePos) - 2.0 * sliceJagLap",
+  // Thins out with distance; keeping the surface (#558), its near half past the wall goes too, as it stands in front of the cut face.
+  ground: "(sliceKeep > 0.5 && length(vSlicePos.xz) > sliceRadius && dot(vSlicePos.xz, sliceDir) > sliceLine(vSlicePos)) || n < sliceFade(vSlicePos) * sliceAmount",
 };
 
 /** Let a slice cut this material, in this role. */
@@ -445,6 +497,10 @@ export function withSlice<T extends THREE.Material>(m: T, slice: Slice, role: Sl
       sliceEarth: slice.earth,
       sliceTint: slice.tint,
       sliceTintDepth: slice.tintDepth,
+      sliceKeep: slice.keep,
+      sliceKeptShade: slice.keptShade,
+      sliceJagAmount: slice.jag,
+      sliceJagLap: slice.jagLap,
     });
     shader.vertexShader = shader.vertexShader
       .replace("#include <common>", "#include <common>\nvarying vec3 vSlicePos;")
@@ -453,13 +509,29 @@ export function withSlice<T extends THREE.Material>(m: T, slice: Slice, role: Sl
       .replace("#include <common>", `#include <common>\nvarying vec3 vSlicePos;\n${SLICE_UNIFORMS}\n${SLICE_GLSL}`)
       .replace("#include <clipping_planes_fragment>", `#include <clipping_planes_fragment>\nif (sliceOn > 0.5) { float n = sliceStipple(); if (${SLICE_CUT[role]}) discard; }`);
     // The cut rock recedes into the dark, once lit.
-    if (role === "wall" || role === "face")
+    if (role === "wall" || role === "face" || role === "front")
       shader.fragmentShader = shader.fragmentShader.replace(
         "#include <fog_fragment>",
-        "#include <fog_fragment>\nif (sliceOn > 0.5) gl_FragColor.rgb = mix(gl_FragColor.rgb, sliceEarth, sliceDarken(vSlicePos));",
+        `#include <fog_fragment>\nif (sliceOn > 0.5) gl_FragColor.rgb = mix(gl_FragColor.rgb, sliceEarth, ${role !== "wall" ? "max(sliceDarken(vSlicePos), sliceKeep * sliceKeptShade)" : "sliceDarken(vSlicePos)"});`,
       );
   };
   m.customProgramCacheKey = () => `${prevKey}|slice-${role}`;
+  m.userData.sliceRole = role;
+  return m;
+}
+
+const sliceShadows = new Map<string, THREE.MeshDepthMaterial>();
+
+/**
+ * What a sliced material casts in the sun's shadow map (#558): the same cut, so what's cut away casts no shadow
+ * (the land over the hole and the near half of the wall would otherwise shade the rooms while unseen).
+ */
+export function sliceShadow(slice: Slice, role: SliceRole): THREE.MeshDepthMaterial {
+  let m = sliceShadows.get(role);
+  if (!m) {
+    m = withSlice(new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking }), slice, role);
+    sliceShadows.set(role, m);
+  }
   return m;
 }
 

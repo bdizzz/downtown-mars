@@ -99,7 +99,7 @@ export function SettingsView({ settings, update, onBack, onKeys, tutorial, onTut
 
 type Ctx = Pick<Props, "settings" | "update" | "onKeys" | "tutorial" | "onTutorial">;
 
-type GraphicsKey = Exclude<keyof Graphics, "furniture" | "pixelRatio" | "life" | "reflections" | "style" | "styleTuning">;
+type GraphicsKey = Exclude<keyof Graphics, "furniture" | "pixelRatio" | "life" | "reflections" | "style" | "styleTuning" | "keepSurface">;
 
 /** What each row reads and sets. A new setting in the table gets a line here. */
 function bind(row: SettingRow, { settings, update, tutorial, onTutorial }: Ctx): { value: number | boolean; set: (v: number | boolean) => void } | null {
@@ -112,8 +112,9 @@ function bind(row: SettingRow, { settings, update, tutorial, onTutorial }: Ctx):
       return { value: g.pixelRatio, set: (v) => setG({ pixelRatio: v as Graphics["pixelRatio"] }) };
     case "graphics.reflections":
     case "graphics.styleTuning":
+    case "graphics.keepSurface":
     case "graphics.life": {
-      const k = row.id === "graphics.life" ? "life" : row.id === "graphics.styleTuning" ? "styleTuning" : "reflections";
+      const k = row.id === "graphics.life" ? "life" : row.id === "graphics.styleTuning" ? "styleTuning" : row.id === "graphics.keepSurface" ? "keepSurface" : "reflections";
       return { value: g[k], set: (v) => setG({ [k]: v }) };
     }
     default: {

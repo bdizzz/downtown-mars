@@ -258,6 +258,7 @@ export interface LookLike {
   setGraphics(g: Graphics): void;
   setStorm(level: number): void;
   setDaylight(light: number): void;
+  setBackdrop(color: number | null): void;
   setView(focusY: number, inside: boolean, iso: { distance: number; radius: number } | null): void;
   resize(): void;
   render(): void;
@@ -276,6 +277,7 @@ export class PlainLook implements LookLike {
   }
   setStorm(): void {}
   setDaylight(): void {}
+  setBackdrop(): void {}
   setView(): void {}
   resize(): void {}
   render(): void {
@@ -444,10 +446,24 @@ export class Look implements LookLike {
     this.storm = level;
     const u = this.haze.uniforms;
     (u.color!.value as THREE.Color).set(LOOK.haze.color).lerp(new THREE.Color(LOOK.storm.color), level);
+    if (this.backdrop !== null) (u.color!.value as THREE.Color).set(this.backdrop);
     u.density!.value = LOOK.haze.density + (LOOK.storm.density - LOOK.haze.density) * level;
     u.clear!.value = LOOK.haze.clear + (LOOK.storm.clear - LOOK.haze.clear) * level;
-    u.most!.value = LOOK.haze.max + (LOOK.storm.max - LOOK.haze.max) * level;
+    u.most!.value = this.backdrop !== null ? 1 : LOOK.haze.max + (LOOK.storm.max - LOOK.haze.max) * level;
     this.setAerial();
+  }
+
+  private backdrop: number | null = null;
+
+  /**
+   * A plain backdrop behind the scene (Free view's cut-out, #558): the haze turns its colour and may hide
+   * entirely, so what's below the floor in view fades into it rather than glowing against it in the haze's
+   * warm colour. Null: the haze as usual.
+   */
+  setBackdrop(color: number | null): void {
+    if (color === this.backdrop) return;
+    this.backdrop = color;
+    this.setStorm(this.storm);
   }
 
   private daylight = 1;

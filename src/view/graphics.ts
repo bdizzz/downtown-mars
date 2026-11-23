@@ -63,12 +63,14 @@ export interface Graphics {
   style: string;
   /** Show the look's tuning panel, with a slider for its every number. */
   styleTuning: boolean;
+  /** Free view over a floor (#558, an experiment): keep the far rock wall up to the land, and the land and sky round the hole. Not part of the presets. */
+  keepSurface: boolean;
 }
 
 export type Preset = "low" | "medium" | "high";
 
 /** What a preset sets: everything but the furniture choice, which stays as the player chose it. */
-export type PresetSettings = Omit<Graphics, "furniture" | "style" | "styleTuning">;
+export type PresetSettings = Omit<Graphics, "furniture" | "style" | "styleTuning" | "keepSurface">;
 
 export const GRAPHICS_PRESETS: Record<Preset, PresetSettings> = {
   low: { pixelRatio: 1, life: false, reflections: false, ao: 0, bloom: 0, haze: 0, tiltShift: 0, grade: 0, lamps: 0, shadows: 0 },
@@ -82,7 +84,7 @@ export const PRESET_NAMES: { id: Preset; name: string; hint: string }[] = [
   { id: "high", name: "High", hint: "Everything, at full sharpness" },
 ];
 
-export const DEFAULT_GRAPHICS: Graphics = { ...GRAPHICS_PRESETS.high, furniture: DEFAULT_FURNITURE, style: "standard", styleTuning: false };
+export const DEFAULT_GRAPHICS: Graphics = { ...GRAPHICS_PRESETS.high, furniture: DEFAULT_FURNITURE, style: "standard", styleTuning: false, keepSurface: false };
 
 /** The next preset down, or null from the lowest. */
 export function lowerPreset(p: Preset | "custom"): Preset | null {
@@ -118,5 +120,6 @@ export function cleanGraphics(raw: Partial<Graphics> | undefined): Graphics {
     shadows: amount(g.shadows, DEFAULT_GRAPHICS.shadows),
     style: typeof g.style === "string" && LOOK_STYLES.includes(g.style) ? g.style : DEFAULT_GRAPHICS.style,
     styleTuning: typeof g.styleTuning === "boolean" ? g.styleTuning : DEFAULT_GRAPHICS.styleTuning,
+    keepSurface: typeof g.keepSurface === "boolean" ? g.keepSurface : DEFAULT_GRAPHICS.keepSurface,
   };
 }

@@ -24,6 +24,7 @@
     { "id": "graphics.style", "section": "display", "name": "Look", "hint": "Retro and drawn styles (experimental); PS1 wobble and cel bands need a reload", "control": "select", "only": "web",
       "options": [{ "value": "standard", "name": "Standard" }, { "value": "snes", "name": "16-bit" }, { "value": "crt", "name": "16-bit on a CRT" }, { "value": "ps1", "name": "PS1" }, { "value": "n64", "name": "N64" }, { "value": "cel", "name": "Cel shaded" }, { "value": "painterly", "name": "Painterly" }, { "value": "blueprint", "name": "Blueprint" }, { "value": "vector", "name": "Vector" }, { "value": "ascii", "name": "ASCII" }] },
     { "id": "graphics.styleTuning", "section": "display", "name": "Look tuning", "hint": "A panel in the corner with a slider for each of the look's numbers", "control": "toggle", "only": "web" },
+    { "id": "graphics.keepSurface", "section": "display", "name": "Keep the surface", "hint": "In Free view, the far rock wall stands up to the land and sky over a floor (experimental)", "control": "toggle", "only": "web" },
     { "id": "graphics.pixelRatio", "section": "display", "name": "Sharpness", "hint": "Sharper costs more on high-resolution screens", "control": "select", "only": "web",
       "options": [{ "value": 1, "name": "Standard" }, { "value": 1.5, "name": "Sharp" }, { "value": 2, "name": "Sharpest" }] },
     { "id": "graphics.lamps", "section": "display", "name": "Lamp light", "hint": "Lamps, fires and grow lights light the rooms around them", "control": "slider", "min": 0, "max": 1, "step": 0.1, "only": "web" },
