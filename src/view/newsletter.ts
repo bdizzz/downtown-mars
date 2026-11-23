@@ -103,6 +103,41 @@ export interface Newsletter {
   sign: string;
 }
 
+/**
+ * Where a section's items split into its two columns (#588): the first `k` run down the left, the rest
+ * down the right, keeping reading order, with `k` chosen so the two come out as near the same length as
+ * whole items allow (none is split across columns). A lone item gets the whole width (`k` = 1, nothing
+ * on the right). Lengths are estimates in characters (see storyLength, letterLength).
+ */
+export function columnSplit(lengths: number[]): number {
+  if (lengths.length < 2) return lengths.length;
+  const total = lengths.reduce((a, b) => a + b, 0);
+  let best = 1;
+  let bestGap = Infinity;
+  let left = 0;
+  for (let k = 1; k < lengths.length; k++) {
+    left += lengths[k - 1]!;
+    const gap = Math.abs(total - 2 * left);
+    if (gap < bestGap) [best, bestGap] = [k, gap];
+  }
+  return best;
+}
+
+/** About what one more item costs in a column beyond its text: its kicker and the gap under it, in characters. */
+const ITEM_LENGTH = 90;
+/** A photo runs about four lines deep beside the text. */
+const PHOTO_LENGTH = 160;
+/** A letter's box and its writer's line. */
+const BOX_LENGTH = 60;
+
+export function storyLength(st: NewsStory): number {
+  return ITEM_LENGTH + st.head.length + st.text.length + (st.who ? PHOTO_LENGTH : 0);
+}
+
+export function letterLength(l: NewsLetter): number {
+  return ITEM_LENGTH + BOX_LENGTH + l.intro.length + l.quote.length;
+}
+
 type Vars = Record<string, string | number>;
 
 function fill(text: string, v: Vars): string {

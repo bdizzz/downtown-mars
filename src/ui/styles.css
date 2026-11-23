@@ -1612,7 +1612,10 @@ kbd {
 .newsletter .np-lead { border-bottom: 1px solid var(--np-rule); padding-bottom: 10px; }
 .newsletter .np-lead p { font-size: 15px; }
 .newsletter .np-drop::first-letter { float: left; font-size: 3.1em; line-height: 0.85; padding: 4px 6px 0 0; font-weight: 700; color: var(--np-rust); }
-.newsletter .np-cols { column-count: 2; column-gap: 22px; column-rule: 1px solid rgba(42, 30, 23, 0.35); }
+/* Two columns, each a run of whole items (Newsletter.tsx Columns), with a rule between them. */
+.newsletter .np-cols { display: grid; grid-template-columns: 1fr 1fr; align-items: stretch; }
+.newsletter .np-col { min-width: 0; }
+.newsletter .np-col + .np-col { border-left: 1px solid rgba(42, 30, 23, 0.35); padding-left: 11px; margin-left: 11px; }
 .newsletter .np-story { break-inside: avoid; margin-bottom: 10px; }
 .newsletter .np-story p { text-align: justify; hyphens: auto; }
 .newsletter .np-letter { border: 1px solid rgba(42, 30, 23, 0.35); padding: 6px 8px; background: rgba(255, 250, 235, 0.35); }
@@ -1629,7 +1632,8 @@ kbd {
 .newsletter .np-printed { font-size: 9px; text-align: center; color: var(--np-faint); letter-spacing: 0.08em; font-variant: small-caps; }
 @media (max-width: 480px) {
   .newsletter { padding: 8px 14px 10px; }
-  .newsletter .np-cols { column-count: 1; }
+  .newsletter .np-cols { grid-template-columns: 1fr; }
+  .newsletter .np-col + .np-col { border-left: none; padding-left: 0; margin-left: 0; }
   .newsletter .np-ear { display: none; }
   .newsletter .np-mast { grid-template-columns: 1fr; }
   .newsletter .np-strip { flex-wrap: wrap; }
@@ -1656,7 +1660,7 @@ kbd {
   background: radial-gradient(circle, rgba(36, 26, 20, 0.6) 0.6px, transparent 0.9px) 0 0 / 3px 3px;
 }
 /* A lone story or letter spans the page rather than leaving the second column empty. */
-.newsletter .np-cols.one { column-count: 1; }
+.newsletter .np-cols.one { grid-template-columns: 1fr; }
 
 /*
  * The top-right corner at desktop sizes (#439): each thing has a home of its own, and opening a side panel
