@@ -14,6 +14,8 @@ import { corridors, finishDef } from "../sim/corridors";
 import { liningById, liningCost, liningId, MATERIALS, wallStep } from "../sim/materials";
 import { resName } from "./format";
 import { freshClass, SHOW_ALL, type Reveal } from "./reveal";
+import { cameraDragHint } from "../view/cameraDrag";
+import { touchFirst } from "../view/touch";
 
 // Building, in two parts. The rail down the left edge: a handful of groups of rooms, each opening a
 // short list of tiles beside it (a room, or a family of sizes behind one tile), with the details of
@@ -545,10 +547,14 @@ function CorridorBar({ tool, setTool, resources, reveal = SHOW_ALL }: Pick<BarPr
  */
 export function ToolBar({ tool, setTool, resources, rotate, highlight, deposits, lining, setLining, reveal = SHOW_ALL }: BarProps) {
   if (!tool) return null;
+  // With a mouse: the keys that move the camera without putting the tool down (#585).
   const done = (
-    <button className="btn ghost done" onClick={() => setTool(null)} title="Put the tool down (Esc, or right-click)">
-      Done <kbd>Esc</kbd>
-    </button>
+    <>
+      {!touchFirst() && <span className="dock-hint cam-keys">{cameraDragHint(tool)}</span>}
+      <button className="btn ghost done" onClick={() => setTool(null)} title="Put the tool down (Esc, or right-click)">
+        Done <kbd>Esc</kbd>
+      </button>
+    </>
   );
   if (tool.kind === "demolish") {
     return (

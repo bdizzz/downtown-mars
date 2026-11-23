@@ -485,3 +485,8 @@ Talked through with Bryon (Nov 12) and built as one PR (#394–#406).
 - Old saves: each old slot becomes the new slots at its angles; rooms bigger than their kind's shape shrink in place, keeping their door end, and the freed slots stay dug. Smaller ones (a 2-slot park, now 3) are left, working in proportion.
 - The bunk dorm is two slots, not one (Bryon, Nov 20, in #555). Crowding stays at 5 people per cell, so a full dorm (8 a cell) is stuffy as before; the one-slot dorm with a threshold of 13 is not to be revived.
 - Air volume still counts each cell as a nominal 100 m²: every cell is the same size now, and the air's numbers are tuned to that scale.
+
+## Decided for camera keys (Nov 22–23, #585)
+
+- One scheme in Build and out, after Google Maps 3D (Bryon, Nov 22): ⌘ or Ctrl and drag turns and tilts the 3D view, Shift and drag pans; a plain drag keeps doing what it did (turning, or snaking corridors). While ⌘ or Ctrl is held with a tool in hand, the ghost hides and a click doesn't place: let go and the tool is back.
+- The corridor tool keeps Shift for filling in; there ⌘ or Ctrl with Shift and drag pans (Bryon, Nov 23). The tool bar names the keys.

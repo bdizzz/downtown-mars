@@ -73,7 +73,9 @@ export function StatusBar({ info, snapshot, notice, overlay, view, tool, colorBl
       : `${drag[0]!.toUpperCase()}${drag.slice(1)} · two fingers pinch, twist and pan · hold to inspect`
     : view === "plan"
       ? "Drag to pan · scroll or pinch to zoom"
-      : "Drag to pan · scroll to move · pinch or ctrl+scroll to zoom";
+      : view === "3d"
+        ? "Drag to turn · shift+drag to pan · scroll to move · pinch or ctrl+scroll to zoom"
+        : "Drag to pan · scroll to move · pinch or ctrl+scroll to zoom";
   let bad = false;
   if (notice) {
     text = notice;
