@@ -196,7 +196,7 @@
     "commitAlong": 0.25
   },
   "landingKits": {
-    "_note": "What the landing crew sets up before the game starts (T-164). A new game's first hole gets newGame's kit, so a newcomer's air, water and power already work; holes founded later get laterHoles' (their seed kit brings the rest). Difficulty (F-014) will give hard the bare kit, and offer it on normal as a veteran start. The full kit brings a heater for floor 1 (#403); a founded hole's seed kit brings one, set up on arrival (founding.ts). A ring room's holds sets what a tank holds; the crew lays a corridor along the fronts of rooms nothing reaches, and the shortest spoke in to it.",
+    "_note": "What the landing crew sets up before the game starts (T-164). A new game's first hole gets newGame's kit, so a newcomer's air, water and power already work; holes founded later get laterHoles' (their seed kit brings the rest). Difficulty (F-014) will give hard the bare kit, and offer it on normal as a veteran start. The full kit brings a heater for floor 1 (#403); a founded hole's seed kit brings one, set up on arrival (founding.ts). A ring room's holds sets what a tank holds, and material its lining (the entrance comes lined in marscrete, #563); the crew lays a corridor along the fronts of rooms nothing reaches, and the shortest spoke in to it.",
     "newGame": "full",
     "laterHoles": "bare",
     "bare": {
@@ -206,7 +206,7 @@
         { "room": "solar_array", "slot": 4 }
       ],
       "ring": [
-        { "room": "entrance", "floor": 1, "ring": 1, "slot": 0 },
+        { "room": "entrance", "floor": 1, "ring": 1, "slot": 0, "material": "marscrete" },
         { "room": "battery_bank", "floor": 1, "ring": 2, "slot": 14 }
       ]
     },
@@ -217,7 +217,7 @@
         { "room": "solar_array", "slot": 4 }
       ],
       "ring": [
-        { "room": "entrance", "floor": 1, "ring": 1, "slot": 0 },
+        { "room": "entrance", "floor": 1, "ring": 1, "slot": 0, "material": "marscrete" },
         { "room": "battery_bank", "floor": 1, "ring": 2, "slot": 14 },
         { "room": "water_tank", "floor": 1, "ring": 3, "slot": 4 },
         { "room": "water_tank", "floor": 1, "ring": 3, "slot": 5, "holds": "grayWater" },

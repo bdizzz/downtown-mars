@@ -25,7 +25,7 @@ import type { World } from "./world";
 // effect field). Bump the version whenever the shape changes, and add a
 // migration from the previous version so old saves keep working.
 
-export const SAVE_VERSION = 27;
+export const SAVE_VERSION = 28;
 
 type Raw = Record<string, unknown>;
 
@@ -138,7 +138,8 @@ const MIGRATIONS: Record<number, (s: Raw) => Raw> = {
       const layout = h.layout as Layout;
       for (const room of layout.rooms) {
         const def = roomDef(room.type);
-        if (room.at.kind !== "ring" || def.public || def.excavationOnly) continue;
+        // The entrance was walk-through then (#563), with nothing to glaze.
+        if (room.at.kind !== "ring" || def.public || def.excavationOnly || def.lift || room.type === "entrance") continue;
         const shaft = shaftBorders(layout, room);
         if (shaft.length) setRoomWindows(room, shaft, true);
       }
@@ -290,6 +291,17 @@ const MIGRATIONS: Record<number, (s: Raw) => Raw> = {
     }),
     convoys: ((s.convoys as Raw[] | undefined) ?? []).map((c) => ({ ...c, people: membersFromCohorts((c.people as LegacyCohort[] | undefined) ?? []) })),
     migrations: ((s.migrations as Raw[] | undefined) ?? []).map((m) => ({ ...m, people: membersFromCohorts((m.people as LegacyCohort[] | undefined) ?? []) })),
+  }),
+  // v28: the entrance and lifts are private rooms, reached by their doors (#563, #565). The
+  // entrance comes lined in marscrete; lifts that don't know what they were built into are rock.
+  27: (s) => ({
+    ...s,
+    holes: (s.holes as Raw[]).map((h) => {
+      const layout = h.layout as Layout;
+      for (const room of layout.rooms) if (room.type === "entrance") room.material ??= "marscrete";
+      recomputeAccess(layout);
+      return { ...h, layout };
+    }),
   }),
 };
 

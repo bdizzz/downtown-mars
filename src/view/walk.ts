@@ -11,7 +11,7 @@ import { circleRadius, outerRadius, ringAt, ringRadii } from "../sim/geometry";
 
 // Walking a floor in first person: where a colonist can stand. Open ground is
 // the gallery tubes along the shaft wall (not over the railing), public rooms (plazas,
-// stairs, the entrance, a cargo elevator's stop), dug-out empty space, and the
+// stairs), dug-out empty space, and the
 // corridors carved along the borders between cells. A private room's floor is
 // its own region, walled off from everything around it except through its
 // door. Solid rock is solid, and so is furniture. Positions are metres around
@@ -52,6 +52,8 @@ export function regionAt(layout: Layout, floor: number, x: number, z: number): R
   const room = roomAt(layout, cell);
   if (!room) return isOpen(layout, cell) ? OPEN : null;
   if (!built(room)) return null;
+  // A cargo elevator's floors above its stop are its shaft: nowhere to stand.
+  if (roomDef(room.type).cargoShaft && floor !== Math.max(...room.cells.map((c) => c.floor))) return null;
   if (!roomDef(room.type).public) return `room:${room.id}`;
   return walkThrough(room, floor) ? OPEN : null;
 }

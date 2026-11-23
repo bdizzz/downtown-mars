@@ -2,12 +2,18 @@ import { describe, expect, it } from "vitest";
 import { applyCommand } from "../src/sim/commands";
 import { config } from "../src/sim/config";
 import { checkPlacement, ensureFloors, type Location } from "../src/sim/placement";
-import { floorLinked } from "../src/sim/corridors";
+import { corridors, floorLinked, recomputeAccess } from "../src/sim/corridors";
 import { galleryEdges } from "../src/sim/edges";
 import { checkBuild } from "../src/sim/costs";
 import { holeGates, setAdults, unlock } from "../src/sim/people";
 import { step } from "../src/sim/step";
 import { createInitialState, type SimState } from "../src/sim/state";
+import { demolishRoom } from "../src/sim/placement";
+import { stepsBetween } from "../src/sim/paths";
+import { deserialize, serialize } from "../src/sim/save";
+import { createWorld } from "../src/sim/world";
+import { doorways } from "../src/view/doors";
+import { roomDef } from "../src/sim/rooms";
 
 const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
 
@@ -83,6 +89,66 @@ describe("the entrance, and stairs down", () => {
   });
 });
 
+describe("the entrance is a room of its own (#563)", () => {
+  it("is walled, lined in marscrete, opens onto the tube by its door, and can't be demolished", () => {
+    const s = createInitialState(config);
+    const entrance = s.layout.rooms.find((r) => r.type === "entrance")!;
+    expect(roomDef("entrance").public).toBeFalsy();
+    expect(entrance.material).toBe("marscrete");
+    expect(doorways(s.layout, entrance)).toHaveLength(1);
+    expect(demolishRoom(s.layout, entrance.id)).toMatchObject({ ok: false });
+    expect(applyCommand(s, { type: "demolish", roomId: entrance.id }).ok).toBe(false);
+  });
+
+  it("isn't walked through: a room behind it needs a corridor of its own", () => {
+    const s = deep();
+    // Ring 2, behind the entrance: once it opened onto the walk-through entrance; now it's sealed off.
+    const behind = build(s, "galley", ring(1, 2, 0));
+    expect(behind.connected).toBe(false);
+    expect(applyCommand(s, { type: "connectRoom", roomId: behind.id, finish: "rock" }).ok).toBe(true);
+    applyCommand(s, { type: "consoleFinish" });
+    expect(s.layout.rooms.find((r) => r.id === behind.id)!.connected).toBe(true);
+  });
+
+  it("old saves line their entrance in marscrete", () => {
+    const raw = JSON.parse(serialize(createWorld(config)));
+    raw.version = 27;
+    for (const h of raw.state.holes) for (const r of h.layout.rooms) delete r.material;
+    const back = deserialize(JSON.stringify(raw));
+    if (!back.ok) throw new Error(back.reason);
+    expect(back.world.holes[0]!.layout.rooms.find((r) => r.type === "entrance")!.material).toBe("marscrete");
+  });
+});
+
+describe("lifts are private rooms (#565)", () => {
+  it("carry people between the floors they open onto by their doors, but don't open their neighbours", () => {
+    const s = deep();
+    const up = build(s, "galley", ring(1, 1, 3));
+    const lift = build(s, "elevator", ring(1, 1, 5)); // floors 1–2
+    const beside = build(s, "clinic", ring(2, 1, 6));
+    expect(roomDef("elevator").public).toBeFalsy();
+    // Nothing walkable along it on floor 2: the clinic beside it is cut off.
+    expect(beside.connected).toBe(false);
+    expect(stepsBetween(s.layout, up.id, beside.id)).toBeNull();
+    // A tube along both: in by the lift's door, out to the clinic.
+    for (const slot of [5, 6]) s.layout.corridors[galleryEdges(s.layout.hole, 2)[slot]!.id] = corridors.gallery.id;
+    recomputeAccess(s.layout);
+    s.layout.version++;
+    expect(s.layout.rooms.find((r) => r.id === beside.id)!.connected).toBe(true);
+    expect(stepsBetween(s.layout, up.id, beside.id)).not.toBeNull();
+    expect(doorways(s.layout, lift).map((d) => d.floor)).toEqual([1, 2]);
+  });
+
+  it("remember what they were built into: marscrete over dug-out space, rock where dug from rock", () => {
+    const s = deep();
+    // Floor 1's ring 1 came dug out; floor 2's is rock.
+    const lift = build(s, "elevator", ring(1, 1, 5));
+    expect(lift.marscreteFill).toEqual([1]);
+    build(s, "elevator", ring(2, 1, 5)); // extends it to floor 3, through rock
+    expect(s.layout.rooms.find((r) => r.id === lift.id)!.marscreteFill).toEqual([1]);
+  });
+});
+
 describe("the cargo elevator", () => {
   function unlocked(): SimState {
     const s = deep();
@@ -107,6 +173,11 @@ describe("the cargo elevator", () => {
     const cargo = build(s, "cargo_elevator", ring(3, 1, 4));
     expect(new Set(cargo.cells.map((c) => c.floor))).toEqual(new Set([1, 2, 3]));
     expect(cargo.connected).toBe(true);
+    // A private room (#565): its neighbour isn't reached through its wall, only by a corridor to its door.
+    expect(g3.connected).toBe(false);
+    s.layout.corridors[galleryEdges(s.layout.hole, 3)[3]!.id] = corridors.gallery.id;
+    s.layout.corridors[galleryEdges(s.layout.hole, 3)[4]!.id] = corridors.gallery.id;
+    recomputeAccess(s.layout);
     expect(g3.connected).toBe(true);
     expect(g2.connected).toBe(false);
   });

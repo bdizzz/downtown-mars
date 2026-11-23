@@ -74,7 +74,7 @@ export function flooringDef(id: string | undefined): FlooringDef | null {
   return id ? (MATERIALS.floorings.find((f) => f.id === id) ?? null) : null;
 }
 
-/** Can this room have a lining? Ring rooms with walls: not surface buildings, the entrance, stairs and lifts, or empty rooms. */
+/** Can this room have a lining? Ring rooms with walls: not surface buildings, stairs and lifts, or empty rooms (the entrance can, #563). */
 export function canLine(room: RoomInstance): boolean {
   return canLineAt(room.type, room.at);
 }

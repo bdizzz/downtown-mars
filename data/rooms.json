@@ -1633,7 +1633,6 @@
       "staff": 0,
       "uses": {},
       "makes": {},
-      "public": true,
       "surfaceLink": true,
       "effects": [
         {
@@ -1719,7 +1718,6 @@
         "power": 1
       },
       "makes": {},
-      "public": true,
       "effects": [
         {
           "type": "noise",
@@ -1749,7 +1747,6 @@
         "power": 3
       },
       "makes": {},
-      "public": true,
       "surfaceLink": true,
       "cargoShaft": true,
       "unlockedBy": "cargo",

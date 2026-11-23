@@ -1,4 +1,4 @@
-import { corridors } from "../sim/corridors";
+import { corridors, openTo } from "../sim/corridors";
 import { deadEnds, doorAlong } from "../sim/deadEnds";
 import { edgeLengthM, galleryEdges, isGalleryEdge, outsideEdges, type Edge } from "../sim/edges";
 import type { Cell, Layout, RoomInstance } from "../sim/placement";
@@ -96,7 +96,8 @@ export function doorways(layout: Layout, room: RoomInstance): Doorway[] {
   if (room.at.kind !== "ring" || roomDef(room.type).public) return [];
   const hole = layout.hole;
   const own = new Set(room.cells.map(key));
-  const floors = [...new Set(room.cells.map((c) => c.floor))].sort((a, b) => a - b);
+  // A cargo elevator has its door at its stop only; above, it's shaft.
+  const floors = [...new Set(openTo(room).map((c) => c.floor))].sort((a, b) => a - b);
   const out: Doorway[] = [];
   for (const floor of floors) {
     const cells = room.cells.filter((c) => c.floor === floor);

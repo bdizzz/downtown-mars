@@ -3,7 +3,7 @@ import { config, type Priority, type SimConfig } from "./config";
 import { overlappingSlots, ringSize, surfaceRingSlots, wrapSlot, type Hole } from "./geometry";
 import { corridorsInside, recomputeAccess, strandedBy, wouldConnect } from "./corridors";
 import { isRoomType, roomDef, type RoomDef } from "./rooms";
-import { rockCells } from "./excavation";
+import { isOpen, rockCells } from "./excavation";
 
 // Where rooms can go. A ring room is anchored at its innermost ring and
 // lowest slot, and spans w slots along that ring and d rings outward. Outer
@@ -84,6 +84,8 @@ export interface RoomInstance {
   finish?: "base" | "fine";
   /** Its floor upgrade (a flooring id in data/materials.json): absent means it matches the walls. */
   flooring?: string;
+  /** Lifts only: the floors it was built over dug-out space, where the fill round its shaft is marscrete (#565); elsewhere it's rock. */
+  marscreteFill?: number[];
 }
 
 export interface Layout {
@@ -343,6 +345,8 @@ function extendStack(layout: Layout, check: Extract<CheckResult, { ok: true }>):
     if (other!.pendingCells?.length) room.pendingCells = [...(room.pendingCells ?? []), ...other!.pendingCells];
   }
   for (const c of check.cells) cells.set(key(c), c);
+  noteFill(layout, room, fresh);
+  for (const other of others) for (const f of other!.marscreteFill ?? []) noteFloor(room, f);
   room.cells = [...cells.values()].sort((a, b) => a.floor - b.floor);
   if (room.at.kind === "ring") room.at = { ...room.at, floor: room.cells[0]!.floor };
   layout.rooms = layout.rooms.filter((r) => !others.includes(r));
@@ -350,6 +354,17 @@ function extendStack(layout: Layout, check: Extract<CheckResult, { ok: true }>):
   recomputeAccess(layout);
   layout.version++;
   return { ...check, id: room.id, extended: true, fresh };
+}
+
+/** A lift's fill round its shaft follows what it was built into: marscrete over dug-out space, rock where it was dug from rock (#565). */
+function noteFill(layout: Layout, room: RoomInstance, cells: Cell[]): void {
+  if (!roomDef(room.type).lift) return;
+  for (const c of cells) if (isOpen(layout, c)) noteFloor(room, c.floor);
+}
+
+function noteFloor(room: RoomInstance, floor: number): void {
+  if (room.marscreteFill?.includes(floor)) return;
+  room.marscreteFill = [...(room.marscreteFill ?? []), floor].sort((a, b) => a - b);
 }
 
 function nameOf(layout: Layout, id: number): string {
@@ -374,6 +389,7 @@ export function placeRoom(layout: Layout, type: string, at: Location, cfg: SimCo
     priority: def.priority ?? cfg.economy.defaultPriority,
     ...(def.defaultCrop ? { crop: def.defaultCrop } : {}),
   });
+  noteFill(layout, layout.rooms[layout.rooms.length - 1]!, check.cells);
   for (const c of check.cells) layout.grid[c.floor - 1]![c.ring - 1]![c.slot] = id;
   for (const s of check.surfaceCells) layout.surface[surfaceRingOf(at) - 1]![s] = id;
   recomputeAccess(layout);

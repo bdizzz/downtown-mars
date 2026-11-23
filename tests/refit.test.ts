@@ -157,8 +157,8 @@ describe("the upgradeRoom command", () => {
   it("refuses rooms that can't have a lining, unbuilt rooms and what it can't afford", () => {
     const s = hole();
     const dorm = build(s, "apartment", ring(1, 1, 3, 2));
-    const stairs = s.layout.rooms.find((r) => r.type === "entrance")!;
-    expect(upgrade(s, stairs.id, "brick")).toMatchObject({ ok: false });
+    const pod = s.layout.rooms.find((r) => r.type === "landing_pod")!;
+    expect(upgrade(s, pod.id, "brick")).toMatchObject({ ok: false });
     expect(upgrade(s, dorm, "rock")).toMatchObject({ ok: false, reason: "It's bare rock already" });
     s.resources.metal = 5;
     expect(upgrade(s, dorm, "metal")).toMatchObject({ ok: false, reason: "Needs 7 more metal" });
@@ -282,8 +282,8 @@ describe("the upgradeFloor command", () => {
     expect(s.resources.fiber).toBe(100);
     s.resources.fiber = 2;
     expect(floor(s, dorm, "fibre_panels")).toMatchObject({ ok: false, reason: "Needs 4 more fiber" });
-    const entrance = s.layout.rooms.find((r) => r.type === "entrance")!;
-    expect(floor(s, entrance.id, "fibre_panels")).toMatchObject({ ok: false });
+    const pod = s.layout.rooms.find((r) => r.type === "landing_pod")!;
+    expect(floor(s, pod.id, "fibre_panels")).toMatchObject({ ok: false });
     expect(floor(s, dorm, "carpet")).toMatchObject({ ok: false });
   });
 });

@@ -24,6 +24,7 @@ describe("what a room is built from", () => {
 
   it("keeps its type's material when it can't have a lining", () => {
     expect(roomLook(room("stairwell"))).toBe(roomFinish("stairwell"));
-    expect(roomLook(room("entrance", { material: "metal" }))).toBe("rock");
+    expect(roomLook(room("elevator", { material: "brick" }))).toBe(roomFinish("elevator"));
+    expect(roomLook(room("entrance", { material: "metal" }))).toBe("metal");
   });
 });

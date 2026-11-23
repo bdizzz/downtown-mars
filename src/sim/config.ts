@@ -283,8 +283,8 @@ export type LandingKitName = "full" | "bare";
 
 export interface LandingKit {
   surface: { room: string; slot: number }[];
-  /** `holds` sets what a tank holds (its first choice if left out). */
-  ring: { room: string; floor: number; ring: number; slot: number; holds?: string }[];
+  /** `holds` sets what a tank holds (its first choice if left out); `material`, its lining (bare rock if left out). */
+  ring: { room: string; floor: number; ring: number; slot: number; holds?: string; material?: "marscrete" | "brick" | "metal" }[];
 }
 
 // JSON imports widen tuples to arrays, so cast via unknown; tests check the values.

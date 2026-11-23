@@ -12,8 +12,9 @@ import { roomDef } from "./rooms";
 //
 // Nodes are the pieces of the network: each built corridor segment (gallery
 // tubes too), each walk-through room on each of its floors (plazas, parks,
-// stairs, elevators, the entrance), each dug-out empty cell, and each private
-// room on each of its floors. Walkable pieces join where they share a corner;
+// stairs), each dug-out empty cell, and each private room on each of its
+// floors. Lifts are private rooms that routes pass through (#565): reached by
+// their doors, they carry people between floors. Walkable pieces join where they share a corner;
 // a private room joins the walkable pieces along its sides (its doors), and any
 // corridor that ends against its wall (deadEnds.ts), and is never walked
 // *through*. A room spanning floors (stairs, an elevator) links its floors; an
@@ -111,12 +112,13 @@ export function buildPaths(layout: Layout): Paths {
     if (!built(room) || room.at.kind !== "ring") continue;
     const def = roomDef(room.type);
     if (def.excavationOnly) continue;
-    const cells = def.public ? openTo(room) : room.cells;
+    const cells = openTo(room);
     const floors = [...new Set(cells.map((c) => c.floor))].sort((a, b) => a - b);
     for (const floor of floors) {
       const here = cells.filter((c) => c.floor === floor);
       const key = `r:${room.id}:${floor}`;
-      add(key, { roomId: room.id, floor, length: roomLength(here.length), through: !!def.public });
+      // A lift is private (#565), reached by its doors: routes ride it between floors; air stops at its doors.
+      add(key, { roomId: room.id, floor, length: roomLength(here.length), through: !!def.public || !!def.lift, ...(def.lift ? { airtight: true } : {}) });
       if (def.public) {
         for (const e of outsideEdges(hole, here)) {
           for (const v of edgeVertices(hole, e)) index(byVertex, v, key);
