@@ -349,24 +349,57 @@ function floorGraph(hole: Hole, floor: number): Map<string, { e: Edge; to: strin
   return adj;
 }
 
+/** Where a route that starts along a lift's wall comes from (no vertex has this name). */
+const LIFT_START = "lift";
+
 /**
  * The cheapest set of new corridor edges that connects a room: a shortest
  * path (by length, existing corridors free) over eligible edges on its floor,
  * from anything linked to the shaft to one of the room's own sides.
  * Returns null if there's no way, or [] if it's already connected.
  */
-/** Where a route that starts along a lift's wall comes from (no vertex has this name). */
-const LIFT_START = "lift";
-
 export function routeToRoom(layout: Layout, room: RoomInstance, _cfg: SimConfig): string[] | null {
   if (room.connected || room.at.kind !== "ring") return room.at.kind === "ring" ? [] : null;
+  return routeToEdges(layout, room.at.floor, new Set(outsideEdges(layout.hole, room.cells).map((e) => e.id)), room);
+}
+
+/**
+ * Built corridors that don't reach the surface, in the groups they join up in
+ * (#590): each one an island of the floor's network. Ones still being built
+ * don't count; they're linked once they're done.
+ */
+export function corridorIslands(layout: Layout): { floor: number; edges: string[] }[] {
   const hole = layout.hole;
-  const floor = room.at.floor;
+  const sets = new Sets();
+  const loose: Edge[] = [];
+  for (const id of Object.keys(layout.corridors)) {
+    if (layout.corridorsBuilding?.[id] !== undefined || layout.corridorLinked?.[id]) continue;
+    const e = edgeById(hole, id);
+    if (!e || e.floor > hole.floors) continue;
+    loose.push(e);
+    join(sets, hole, e);
+  }
+  const groups = new Map<string, { floor: number; edges: string[] }>();
+  for (const e of loose) {
+    const root = sets.find(edgeVertices(hole, e)[0]);
+    const g = groups.get(root) ?? { floor: e.floor, edges: [] };
+    g.edges.push(e.id);
+    groups.set(root, g);
+  }
+  return [...groups.values()];
+}
+
+/**
+ * The cheapest new corridor edges that join any of `goal`'s edges on a floor to
+ * what reaches the surface (#590, and #506's auto-connect): a corridor island,
+ * or a room's sides. Null if there's no way; [] if one is already linked.
+ */
+export function routeToEdges(layout: Layout, floor: number, goal: Set<string>, room?: RoomInstance): string[] | null {
+  const hole = layout.hole;
   const { sets, publicEdges } = network(layout);
   const shaft = sets.find(SURFACE);
   const walkable = (e: Edge) => !!layout.corridors[e.id] || publicEdges.has(e.id);
   const usable = (e: Edge) => walkable(e) || corridorRefusal(layout, e.id) === null;
-  const goal = new Set(outsideEdges(hole, room.cells).map((e) => e.id));
   const adj = floorGraph(hole, floor);
 
   // Dijkstra from every vertex already linked to the surface.

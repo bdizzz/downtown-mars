@@ -10,7 +10,7 @@ import { addRoute } from "../src/sim/rovers";
 import type { SimState } from "../src/sim/state";
 import { createWorld, type World } from "../src/sim/world";
 import { stepWorld } from "../src/sim/worldstep";
-import { ensureStairs, quarry, adapt, tendStorage, tendUpkeep, tendWindows, tendEvents } from "./adaptive";
+import { ensureStairs, joinUp, quarry, adapt, tendStorage, tendUpkeep, tendWindows, tendEvents } from "./adaptive";
 import { planFor, VISIT_ANSWERS } from "./bot";
 import { beds } from "../src/sim/earth";
 import { stageCounts } from "../src/sim/people";
@@ -114,7 +114,6 @@ function builder(plan: Plan[]) {
   };
 }
 
-/** Carve corridors to anything still cut off. */
 /** Once a day: storage kept ahead of the goods. */
 function tend(hole: SimState, t: number): void {
   if (t % config.ticksPerDay === 0) {
@@ -123,10 +122,6 @@ function tend(hole: SimState, t: number): void {
     tendWindows(hole);
     tendEvents(hole);
   }
-}
-
-function reconnect(hole: SimState): void {
-  for (const r of hole.layout.rooms) if (!r.connected && !r.planned) applyCommand(hole, { type: "connectRoom", roomId: r.id, finish: "rock" });
 }
 
 function answerVisits(hole: SimState): void {
@@ -200,7 +195,7 @@ export function runNetwork(days: number, seed = config.seed, found = true, onDay
       }
       answerVisits(home);
       ensureStairs(home);
-      reconnect(home);
+      joinUp(home);
       tend(home, t);
       const child = world.holes[1];
       if (child) {
@@ -211,7 +206,7 @@ export function runNetwork(days: number, seed = config.seed, found = true, onDay
         }
         answerVisits(child);
         ensureStairs(child);
-        reconnect(child);
+        joinUp(child);
         tend(child, t);
       }
       if (found && foundedDay === null && world.mapUnlocked && kitProgress(home) >= 0.999) {

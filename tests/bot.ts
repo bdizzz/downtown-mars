@@ -6,7 +6,7 @@ import { LABELS } from "../src/sim/ledger";
 import { makeSnapshot } from "../src/sim/snapshot";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
-import { ensureStairs, quarry, tendStorage, tendUpkeep, tendWindows, tendLinings, tendEvents } from "./adaptive";
+import { ensureStairs, joinUp, quarry, tendStorage, tendUpkeep, tendWindows, tendLinings, tendEvents } from "./adaptive";
 
 // A scripted player for the first month, following DESIGN.md "First 30
 // minutes": the critical set on day 1, then tier 2 as drops and digging pay
@@ -156,8 +156,8 @@ export function run(days: number, kit: LandingKitName = "bare"): { state: SimSta
         tendLinings(s);
         tendEvents(s);
       }
-      // Anything still cut off (nothing to carve along yet, or short of rock): try again.
-      for (const r of s.layout.rooms) if (!r.connected && !r.planned) cmd({ type: "connectRoom", roomId: r.id, finish: "rock" });
+      // Anything still cut off (nothing to carve along yet, or short of rock): try again; and stray corridors joined up (#590).
+      joinUp(s);
       for (const v of [...s.office.waiting]) {
         const choice = VISIT_ANSWERS[v.kind];
         if (choice && !cmd({ type: "answerVisit", visitId: v.id, choice }).ok) {
