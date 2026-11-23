@@ -12,9 +12,12 @@ export type SectionId = "game" | "display" | "sound" | "controls" | "access";
 export interface SettingRow {
   id: string;
   section: SectionId;
+  /** A sub-header inside the section (#587), drawn where it changes from the row before. */
+  group?: string;
   name: string;
   hint: string;
-  control: "toggle" | "slider" | "select" | "button";
+  /** `panel`: a panel of the web's own (the frame rate), placed by its row. */
+  control: "toggle" | "slider" | "select" | "button" | "panel";
   min?: number;
   max?: number;
   step?: number;
@@ -36,6 +39,17 @@ export const SECTIONS = raw.sections as { id: SectionId; name: string }[];
 
 /** The web's rows, in the table's order. */
 export const SETTING_ROWS = (raw.settings as SettingRow[]).filter((r) => r.only !== "godot");
+
+/** A section's rows in runs under their sub-headers (#587); rows with no group run under none. */
+export function groupsIn(section: SectionId): { group: string | undefined; rows: SettingRow[] }[] {
+  const runs: { group: string | undefined; rows: SettingRow[] }[] = [];
+  for (const r of rowsIn(section)) {
+    const last = runs[runs.length - 1];
+    if (last && last.group === r.group) last.rows.push(r);
+    else runs.push({ group: r.group, rows: [r] });
+  }
+  return runs;
+}
 
 export function rowsIn(section: SectionId): SettingRow[] {
   return SETTING_ROWS.filter((r) => r.section === section && (!r.when || WHEN[r.when]()));
