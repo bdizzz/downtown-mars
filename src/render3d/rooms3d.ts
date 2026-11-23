@@ -2450,7 +2450,8 @@ export function buildLayout(
 // ---- empty space, and what stands at the rim ----
 
 const PILLAR = { half: 0.3, inset: 0.9, color: 0x5a4235 };
-const EMPTY_FLOOR = 0x6e5445;
+/** Dug-out empty space's floor: the rough rock the drill leaves at the bottom of the floor being dug (stage3d, #586), a shade lighter so its grain reads underfoot. */
+const EMPTY_FLOOR = 0x5a3424;
 
 /** A square pillar from y0 to y1, as triangles. */
 function pillar(pos: number[], x: number, z: number, y0: number, y1: number, h: number): void {
@@ -2489,7 +2490,7 @@ function emptySpace(layout: Layout, topFloor: number | null): THREE.Object3D[] {
     }
   }
   if (!floorPos.length) return [];
-  const floorMesh = new THREE.Mesh(geometry(floorPos), material("emptyFloor", () => new THREE.MeshStandardMaterial({ color: EMPTY_FLOOR, roughness: 1, side: THREE.DoubleSide })));
+  const floorMesh = new THREE.Mesh(geometry(floorPos), material("rock:empty", () => withRock(new THREE.MeshStandardMaterial({ color: EMPTY_FLOOR, roughness: 1, side: THREE.DoubleSide }))));
   floorMesh.userData = { pickable: true, empty: true };
   const pillarMesh = new THREE.Mesh(geometry(pillars), material("pillar", () => new THREE.MeshStandardMaterial({ color: PILLAR.color, roughness: 0.9 })));
   return [floorMesh, pillarMesh];
@@ -2756,6 +2757,32 @@ function bulkheadGates(layout: Layout, topFloor: number | null): THREE.Object3D[
 
 /** Gallery tubes: how tall the glass is above the tube's floor, how often a rib holds it up, and the look. */
 const TUBE = { header: 0x6b4a3a, height: 3.3, ribEveryM: 2.4, ribM: 0.12, slab: 0x7a6a5e, rib: 0x9aa4ab, glass: 0xa8d4f0, glassOpacity: 0.14, lamp: 0xffc98a };
+/** A tube's end cap (#589): its frame's width, how far each face of it stands off the glass, and the lamp over it. */
+const TUBE_CAP = { frameM: 0.14, proudM: 0.03, lampM: 0.3, lampDropM: 0.12 };
+
+/**
+ * An end cap closing a gallery tube where its run stops (#589): a glass wall across
+ * the tube at angle `a`, from the shaft-side glass (rOpen) back to the shaft wall (R),
+ * in a metal frame (the ribs' metal: posts at both sides, a sill, a head and a bar at
+ * railing height), with a small lamp over it inside. `inward` (+1 or -1) is the way
+ * round the tube runs from the cap, so the lamp sits inside it.
+ */
+function tubeCap(glass: number[], ribs: number[], lamps: number[], rOpen: number, R: number, a: number, inward: number, yf: number, top: number): void {
+  radialSide(glass, rOpen, R, a, yf, top);
+  const f = TUBE_CAP.frameM;
+  const rm = (rOpen + R) / 2;
+  // The frame stands just proud of the glass on both sides, so it reads from inside the tube and out.
+  for (const side of [-1, 1]) {
+    const b = a + (side * TUBE_CAP.proudM) / rm;
+    radialSide(ribs, rOpen, rOpen + f, b, yf, top);
+    radialSide(ribs, R - f, R, b, yf, top);
+    radialSide(ribs, rOpen, R, b, yf, yf + f);
+    radialSide(ribs, rOpen, R, b, top - f, top);
+    radialSide(ribs, rOpen, R, b, yf + RAIL_HEIGHT - 0.03, yf + RAIL_HEIGHT + 0.03);
+  }
+  const l = a + (inward * (TUBE_CAP.proudM + 0.01)) / rm;
+  radialSide(lamps, rm - TUBE_CAP.lampM / 2, rm + TUBE_CAP.lampM / 2, l, top - f - TUBE_CAP.lampDropM - TUBE_CAP.lampM / 2, top - f - TUBE_CAP.lampDropM);
+}
 
 /**
  * Gallery tubes: on each floor, a glass-walled walkway on the ledge inside the
@@ -2781,7 +2808,10 @@ function galleryTubes(layout: Layout, digFloor: number | null, topFloor: number 
   for (let floor = topFloor ?? 1; floor <= last; floor++) {
     const y0 = floorSpan(floor)[0];
     const yf = y0 + LEDGE_THICKNESS;
-    for (const [slot, e] of galleryEdges(hole, floor).entries()) {
+    const edges = galleryEdges(hole, floor);
+    // Glazed: built and finished, so it has its glass. A run of them is capped wherever it stops.
+    const glazed = edges.map((e) => !!layout.corridors?.[e.id] && layout.corridorsBuilding?.[e.id] === undefined);
+    for (const [slot, e] of edges.entries()) {
       const a0 = e.a0 * TAU;
       const a1 = e.a1 * TAU;
       // Under the dome the shaft is air: an open ledge all the way round, with a railing and lamps, no glass.
@@ -2817,6 +2847,10 @@ function galleryTubes(layout: Layout, digFloor: number | null, topFloor: number 
       const room = behind ? layout.rooms.find((r) => r.id === behind) : undefined;
       const open = room ? !room.planned && roomDef(room.type).public : floor <= hole.floors && isOpen(layout, { floor, ring: 1, slot });
       if (open) curvedFace(header, R, a0, a1, top, floorSpan(floor)[1]);
+      // End caps where the run stops: no glazed tube on that side (none, or one still being built).
+      const n = edges.length;
+      if (!glazed[(slot + n - 1) % n]) tubeCap(glass, ribs, lamps, rOpen, R, a0, 1, yf, top);
+      if (!glazed[(slot + 1) % n]) tubeCap(glass, ribs, lamps, rOpen, R, a1, -1, yf, top);
       // Ribs: a post on the glass and a beam across the roof, every so often along the arc.
       const len = (a1 - a0) * rOpen;
       const count = Math.max(1, Math.round(len / TUBE.ribEveryM));
