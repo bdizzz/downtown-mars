@@ -1683,4 +1683,7 @@ kbd {
 .welcome .welcome-option { display: flex; gap: 8px; align-items: flex-start; font-size: 15px; cursor: pointer; }
 .welcome .welcome-option input { margin-top: 3px; accent-color: var(--accent); }
 .welcome .welcome-option .k { display: block; color: var(--muted); font-size: 12.5px; }
+.welcome .welcome-actions { display: flex; gap: 8px; }
+.welcome .welcome-actions button { margin-top: 6px; font-size: 16.5px; text-align: center; }
+.welcome .welcome-actions button.primary { flex: 1; }
 .menu-difficulty { margin: -4px 0 4px; color: var(--muted); font-size: 12.5px; }

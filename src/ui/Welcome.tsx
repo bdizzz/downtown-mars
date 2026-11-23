@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Level } from "../sim/difficulty";
 import { welcomeCard } from "../view/welcome";
 
@@ -14,9 +14,10 @@ export interface WelcomeChoice {
 /**
  * The card a new game opens with; the game waits behind it. The player picks a difficulty (F-014,
  * T-123), with a line on what each means; easy ticks the guided tutorial, which can still be unticked,
- * and normal offers a veteran start (the bare landing kit).
+ * and normal offers a veteran start (the bare landing kit). Back (or Esc) returns to the title without
+ * starting the game (#582).
  */
-export function Welcome({ onClose }: { onClose: (choice: WelcomeChoice) => void }) {
+export function Welcome({ onClose, onBack }: { onClose: (choice: WelcomeChoice) => void; onBack: () => void }) {
   const card = welcomeCard();
   const d = card.difficulty;
   const [level, setLevel] = useState<Level>(d.picked);
@@ -29,6 +30,13 @@ export function Welcome({ onClose }: { onClose: (choice: WelcomeChoice) => void 
     setGuided(d.levels.find((l) => l.id === id)!.guided);
     setVeteran(false);
   };
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code === "Escape") onBack();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onBack]);
   return (
     <div className="menu-backdrop">
       <div className="menu welcome" role="dialog" aria-label={card.title}>
@@ -63,9 +71,12 @@ export function Welcome({ onClose }: { onClose: (choice: WelcomeChoice) => void 
             </label>
           )}
         </fieldset>
-        <button className="primary" autoFocus onClick={() => onClose({ difficulty: level, veteran: info.veteran && veteran, guided })}>
-          {card.button}
-        </button>
+        <div className="welcome-actions">
+          <button onClick={onBack}>{card.backButton}</button>
+          <button className="primary" autoFocus onClick={() => onClose({ difficulty: level, veteran: info.veteran && veteran, guided })}>
+            {card.button}
+          </button>
+        </div>
       </div>
     </div>
   );

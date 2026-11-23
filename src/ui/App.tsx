@@ -224,11 +224,18 @@ export function App() {
   // instead. The loading screen waits for the hole to arrive.
   const titling = menu === "title";
   const [sceneLoaded, setSceneLoaded] = useState(false);
+  /** Puts the autosave (or, with none to load, the showcase) behind the title. */
+  const titleScene = useCallback(async () => {
+    const showcase = () => send({ type: "consoleShowcase", floors: TITLE_SHOWCASE_FLOORS });
+    // A failed game's autosave can't be loaded (T-162), so it gets the showcase too.
+    const auto = await readSave("autosave");
+    if (auto && !auto.summary.failed && (await load(auto.data)).ok) return;
+    showcase();
+  }, [load, send]);
   useEffect(() => {
     let live = true;
     // Opening the saves copies any from before #533 out of localStorage, so it comes first either way.
     const saves = openSaves();
-    const showcase = () => send({ type: "consoleShowcase", floors: TITLE_SHOWCASE_FLOORS });
     // `?game=mid` (or a save's path) opens that game at once, paused, with no title (#518): for testing and screenshots.
     const asked = gameFromUrl(location.search);
     if (asked) {
@@ -245,15 +252,13 @@ export function App() {
         live = false;
       };
     }
-    // A failed game's autosave can't be loaded (T-162), so it gets the showcase too.
     void saves
-      .then(() => readSave("autosave"))
-      .then((auto) => (auto && !auto.summary.failed ? load(auto.data).then((r) => (r.ok ? r : showcase())) : showcase()))
+      .then(titleScene)
       .then(() => live && setSceneLoaded(true));
     return () => {
       live = false;
     };
-  }, [load, send]);
+  }, [load, titleScene]);
   useEffect(() => {
     if (sceneLoaded && snapshot) bootStep("world");
   }, [sceneLoaded, snapshot]);
@@ -1025,6 +1030,13 @@ export function App() {
             // The guided tutorial sets its own pace once its first step comes back in a snapshot.
             if (guided) send({ type: "setGuide", guide: startGuide() });
             else setSpeed(resumeSpeed.current);
+          }}
+          onBack={() => {
+            // Back to the title (#582): the waiting game is dropped, never saved, and the title shows
+            // the autosave again (or the showcase), as it did before New game.
+            setWelcome(false);
+            setMenu("title");
+            void titleScene();
           }}
         />
       )}
