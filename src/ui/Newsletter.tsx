@@ -1,11 +1,29 @@
 import type { NewsIssue } from "../sim/newsletter";
 import type { Snapshot } from "../sim/snapshot";
-import { NEWSLETTER_NAME, writeNewsletter } from "../view/newsletter";
+import type { ReactNode } from "react";
+import { columnSplit, letterLength, NEWSLETTER_NAME, storyLength, writeNewsletter } from "../view/newsletter";
 import { portraitSvg } from "../view/portrait";
 import { PanelHeader } from "./PanelHeader";
 
 // The Hole Truth (#424): each month's newsletter opens as a card over the game, which waits while it's
 // open (App.tsx); Charts → The Hole Truth lists the back issues. The words: view/newsletter.ts.
+
+/**
+ * A section's items in two columns of about the same length (#588), split by their estimated length
+ * (view/newsletter.ts columnSplit) rather than left to CSS columns, which can stack two boxed items on
+ * the left and leave the right empty. A lone item spans the page; phones stack the two.
+ */
+function Columns({ items, className }: { items: { length: number; node: ReactNode }[]; className?: string }) {
+  if (!items.length) return null;
+  const k = columnSplit(items.map((it) => it.length));
+  const right = items.slice(k);
+  return (
+    <div className={`np-cols${className ? ` ${className}` : ""}${right.length ? "" : " one"}`}>
+      <div className="np-col">{items.slice(0, k).map((it) => it.node)}</div>
+      {right.length > 0 && <div className="np-col">{right.map((it) => it.node)}</div>}
+    </div>
+  );
+}
 
 export function NewsletterCard({ issue, onClose }: { issue: NewsIssue; onClose: () => void }) {
   const n = writeNewsletter(issue);
@@ -35,31 +53,39 @@ export function NewsletterCard({ issue, onClose }: { issue: NewsIssue; onClose: 
           {n.lead.head && <h3>{n.lead.head}</h3>}
           <p className="np-drop">{n.lead.text}</p>
         </section>
-        {(n.stories.length > 0 || n.letters.length > 0) && (
-          <div className={`np-cols${n.stories.length + n.letters.length === 1 ? " one" : ""}`}>
-            {n.stories.map((st, i) => (
-              <section key={i} className="np-story">
-                <div className="kicker">{st.kicker}</div>
-                <p>
-                  {st.head && <strong>{st.head}. </strong>}
-                  {st.text}
-                </p>
-              </section>
-            ))}
-            {n.letters.map((l, i) => (
-              <section key={`l${i}`} className="np-story np-letter">
-                <div className="kicker">{l.kicker}</div>
-                <p className="np-intro">{l.intro}</p>
-                <p>
-                  <em>{l.quote}</em>
-                </p>
-              </section>
-            ))}
-          </div>
-        )}
-        {n.fluff.length > 0 && (
-          <div className={`np-cols np-fluff${n.fluff.length === 1 ? " one" : ""}`}>
-            {n.fluff.map((st, i) => (
+        <Columns
+          items={[
+            ...n.stories.map((st, i) => ({
+              length: storyLength(st),
+              node: (
+                <section key={i} className="np-story">
+                  <div className="kicker">{st.kicker}</div>
+                  <p>
+                    {st.head && <strong>{st.head}. </strong>}
+                    {st.text}
+                  </p>
+                </section>
+              ),
+            })),
+            ...n.letters.map((l, i) => ({
+              length: letterLength(l),
+              node: (
+                <section key={`l${i}`} className="np-story np-letter">
+                  <div className="kicker">{l.kicker}</div>
+                  <p className="np-intro">{l.intro}</p>
+                  <p>
+                    <em>{l.quote}</em>
+                  </p>
+                </section>
+              ),
+            })),
+          ]}
+        />
+        <Columns
+          className="np-fluff"
+          items={n.fluff.map((st, i) => ({
+            length: storyLength(st),
+            node: (
               <section key={`f${i}`} className="np-story">
                 <div className="kicker">{st.kicker}</div>
                 {st.head && <h4>{st.head}</h4>}
@@ -70,9 +96,9 @@ export function NewsletterCard({ issue, onClose }: { issue: NewsIssue; onClose: 
                 )}
                 <p>{st.text}</p>
               </section>
-            ))}
-          </div>
-        )}
+            ),
+          }))}
+        />
         <div className="np-filler">
           <span className="kicker">Notices</span>
           {n.notices.map((t, i) => (

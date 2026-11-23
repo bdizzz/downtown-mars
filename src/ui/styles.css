@@ -231,6 +231,9 @@ kbd { border: 1px solid var(--muted); border-radius: 3px; padding: 0 3px; font-s
 .settings-body { overflow-y: auto; min-height: 0; flex: 1; display: flex; flex-direction: column; }
 .settings-body h3 { margin: 10px 0 2px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
 .settings-body section:first-child h3 { margin-top: 0; }
+.settings-body .set-group { display: flex; flex-direction: column; }
+.settings-body .set-group h4 { margin: 12px 0 2px; font-size: 13px; font-weight: 600; color: var(--accent); }
+.settings-body > .set-group:first-child h4, .settings-body section h3 + .set-group h4 { margin-top: 2px; }
 /* One setting a row: name and hint, then the control. */
 .set-row { display: flex; align-items: center; gap: 12px; padding: 6px 2px; border-bottom: 1px solid #ffffff0d; min-height: 36px; }
 .set-row > label, label.set-row > .set-text { flex: 1; min-width: 0; }
@@ -1610,7 +1613,10 @@ kbd {
 .newsletter .np-lead { border-bottom: 1px solid var(--np-rule); padding-bottom: 10px; }
 .newsletter .np-lead p { font-size: 15px; }
 .newsletter .np-drop::first-letter { float: left; font-size: 3.1em; line-height: 0.85; padding: 4px 6px 0 0; font-weight: 700; color: var(--np-rust); }
-.newsletter .np-cols { column-count: 2; column-gap: 22px; column-rule: 1px solid rgba(42, 30, 23, 0.35); }
+/* Two columns, each a run of whole items (Newsletter.tsx Columns), with a rule between them. */
+.newsletter .np-cols { display: grid; grid-template-columns: 1fr 1fr; align-items: stretch; }
+.newsletter .np-col { min-width: 0; }
+.newsletter .np-col + .np-col { border-left: 1px solid rgba(42, 30, 23, 0.35); padding-left: 11px; margin-left: 11px; }
 .newsletter .np-story { break-inside: avoid; margin-bottom: 10px; }
 .newsletter .np-story p { text-align: justify; hyphens: auto; }
 .newsletter .np-letter { border: 1px solid rgba(42, 30, 23, 0.35); padding: 6px 8px; background: rgba(255, 250, 235, 0.35); }
@@ -1627,7 +1633,8 @@ kbd {
 .newsletter .np-printed { font-size: 9px; text-align: center; color: var(--np-faint); letter-spacing: 0.08em; font-variant: small-caps; }
 @media (max-width: 480px) {
   .newsletter { padding: 8px 14px 10px; }
-  .newsletter .np-cols { column-count: 1; }
+  .newsletter .np-cols { grid-template-columns: 1fr; }
+  .newsletter .np-col + .np-col { border-left: none; padding-left: 0; margin-left: 0; }
   .newsletter .np-ear { display: none; }
   .newsletter .np-mast { grid-template-columns: 1fr; }
   .newsletter .np-strip { flex-wrap: wrap; }
@@ -1654,7 +1661,7 @@ kbd {
   background: radial-gradient(circle, rgba(36, 26, 20, 0.6) 0.6px, transparent 0.9px) 0 0 / 3px 3px;
 }
 /* A lone story or letter spans the page rather than leaving the second column empty. */
-.newsletter .np-cols.one { column-count: 1; }
+.newsletter .np-cols.one { grid-template-columns: 1fr; }
 
 /*
  * The top-right corner at desktop sizes (#439): each thing has a home of its own, and opening a side panel
@@ -1684,4 +1691,7 @@ kbd {
 .welcome .welcome-option { display: flex; gap: 8px; align-items: flex-start; font-size: 15px; cursor: pointer; }
 .welcome .welcome-option input { margin-top: 3px; accent-color: var(--accent); }
 .welcome .welcome-option .k { display: block; color: var(--muted); font-size: 12.5px; }
+.welcome .welcome-actions { display: flex; gap: 8px; }
+.welcome .welcome-actions button { margin-top: 6px; font-size: 16.5px; text-align: center; }
+.welcome .welcome-actions button.primary { flex: 1; }
 .menu-difficulty { margin: -4px 0 4px; color: var(--muted); font-size: 12.5px; }
