@@ -73,6 +73,11 @@ export function isFinish(id: string): boolean {
 
 const roomIdAt = (layout: Layout, c: Cell | null) => (c ? (layout.grid[c.floor - 1]?.[c.ring - 1]?.[c.slot] ?? 0) : 0);
 
+/** Is this border inside the rings opened so far (a gallery edge always is)? Outside them, corridors can't go, nor does the corridor tool point there (#556). */
+export function inUnlockedRings(hole: Hole, e: Edge): boolean {
+  return isGalleryEdge(e) || edgeSides(hole, e).every((c) => !!c && c.ring <= hole.unlockedRings);
+}
+
 /** Why a corridor can't go on this edge, or null if it can. */
 export function corridorRefusal(layout: Layout, edgeId: string): string | null {
   const hole = layout.hole;
@@ -83,8 +88,8 @@ export function corridorRefusal(layout: Layout, edgeId: string): string | null {
   // A gallery tube hangs on the shaft wall, beside whatever ring 1 has there.
   if (isGalleryEdge(e)) return null;
   // Through rock is fine, but only where the hole reaches: both sides in unlocked rings.
+  if (!inUnlockedRings(hole, e)) return `Ring ${hole.unlockedRings + 1}+ needs reinforcement frames`;
   const sides = edgeSides(hole, e);
-  if (sides.some((c) => !c || c.ring > hole.unlockedRings)) return `Ring ${hole.unlockedRings + 1}+ needs reinforcement frames`;
   const [a, b] = sides.map((c) => roomIdAt(layout, c));
   if (a && a === b) return "That's the middle of a room";
   return null;
