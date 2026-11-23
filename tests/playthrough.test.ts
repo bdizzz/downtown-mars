@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { config } from "../src/sim/config";
 import { PLAN, run } from "./bot";
+import { cutOff } from "./adaptive";
 import { construction } from "../src/sim/construction";
 import { storage } from "../src/sim/storage";
 
@@ -26,6 +27,10 @@ describe("first month playthrough", () => {
 
   it("builds the critical set on day 1", () => {
     expect(at("life_support")).toBeLessThan(1);
+  });
+
+  it("ends with one network: every finished room walked to from the entrance, no stray corridors (#590)", () => {
+    expect(cutOff(state)).toEqual({ rooms: [], islands: 0 });
   });
 
   it("finishes tier 2 within about two weeks", () => {

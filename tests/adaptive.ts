@@ -12,7 +12,8 @@ import { network } from "../src/sim/network";
 import { freeSpace, spaceOf, storageRooms } from "../src/sim/storage";
 import { countStage, cryptSpace } from "../src/sim/people";
 import type { SimState } from "../src/sim/state";
-import { floorLinked } from "../src/sim/corridors";
+import { corridorIslands, floorLinked, routeToEdges } from "../src/sim/corridors";
+import { distancesFrom, pathsFor } from "../src/sim/paths";
 import { footprint, roomShapes, type RoomInstance } from "../src/sim/placement";
 import { missingCost } from "../src/sim/costs";
 import { effectOnRoom } from "../src/sim/effects";
@@ -35,6 +36,30 @@ export const stairSlot = (hole: SimState) => hole.layout.hole.ringSlots[0]! - 1;
  * floor at a time, starting from floor 1 (next to the entrance's floor).
  * Returns true if it queued a piece.
  */
+/**
+ * One network per hole (#590): carve the shortest corridor to every room
+ * still cut off, then join every stray corridor network (corridors that reach
+ * nothing) to the one that reaches the entrance.
+ */
+export function joinUp(hole: SimState): void {
+  for (const r of hole.layout.rooms) if (!r.connected && !r.planned) applyCommand(hole, { type: "connectRoom", roomId: r.id, finish: "rock" });
+  for (const island of corridorIslands(hole.layout)) {
+    const path = routeToEdges(hole.layout, island.floor, new Set(island.edges));
+    if (path?.length) applyCommand(hole, { type: "drawCorridors", edges: path, finish: "rock" });
+  }
+}
+
+/** What isn't on the hole's one network: finished rooms nobody can walk to from the entrance, and stray corridors (#590). */
+export function cutOff(hole: SimState): { rooms: string[]; islands: number } {
+  const l = hole.layout;
+  const entrance = l.rooms.find((r) => r.type === "entrance")!;
+  const reach = distancesFrom(pathsFor(l), entrance.id, "walk");
+  const rooms = l.rooms
+    .filter((r) => r.at.kind === "ring" && !r.planned && !r.building && !roomDef(r.type).excavationOnly && r.id !== entrance.id && !reach.has(r.id))
+    .map((r) => `${r.type}@${r.at.kind === "ring" ? `${r.at.floor}.${r.at.ring}.${r.at.slot}` : ""}`);
+  return { rooms, islands: corridorIslands(l).length };
+}
+
 export function ensureStairs(hole: SimState): boolean {
   if (!wantsDeeper(hole)) return false;
   const slot = stairSlot(hole);

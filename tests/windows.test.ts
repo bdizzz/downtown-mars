@@ -217,7 +217,7 @@ describe("windows", () => {
     if (!back.ok) return;
     const room = back.world.holes[0]!.layout.rooms.find((r) => r.id === dorm)!;
     expect(room.windows?.sort()).toEqual(shaftBorders(back.world.holes[0]!.layout, room).sort());
-    // Not the entrance (it's walk-through).
+    // Not the entrance (it was walk-through then).
     expect(back.world.holes[0]!.layout.rooms.find((r) => r.type === "entrance")!.windows).toBeUndefined();
   });
 

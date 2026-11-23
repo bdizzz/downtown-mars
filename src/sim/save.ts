@@ -10,7 +10,7 @@ import { depositsAt, generateMap, type MapState } from "./map";
 import { network } from "./network";
 import { culture } from "./culture";
 import { colonistsFromCohorts, membersFromCohorts, packColonists, seedFromHomes, unpackColonists, type LegacyCohort, type PackedColonists } from "./colonists";
-import { corridors, migrateCorridorRooms, recomputeAccess } from "./corridors";
+import { corridors, migrateCorridorRooms, recomputeAccess, routeToRoom } from "./corridors";
 import { galleryEdges } from "./edges";
 import { createHole, flatRingRadii, type Hole } from "./geometry";
 import { construction } from "./construction";
@@ -25,7 +25,7 @@ import type { World } from "./world";
 // effect field). Bump the version whenever the shape changes, and add a
 // migration from the previous version so old saves keep working.
 
-export const SAVE_VERSION = 27;
+export const SAVE_VERSION = 28;
 
 type Raw = Record<string, unknown>;
 
@@ -138,7 +138,8 @@ const MIGRATIONS: Record<number, (s: Raw) => Raw> = {
       const layout = h.layout as Layout;
       for (const room of layout.rooms) {
         const def = roomDef(room.type);
-        if (room.at.kind !== "ring" || def.public || def.excavationOnly) continue;
+        // The entrance was walk-through then (#563), with nothing to glaze.
+        if (room.at.kind !== "ring" || def.public || def.excavationOnly || def.lift || room.type === "entrance") continue;
         const shaft = shaftBorders(layout, room);
         if (shaft.length) setRoomWindows(room, shaft, true);
       }
@@ -290,6 +291,26 @@ const MIGRATIONS: Record<number, (s: Raw) => Raw> = {
     }),
     convoys: ((s.convoys as Raw[] | undefined) ?? []).map((c) => ({ ...c, people: membersFromCohorts((c.people as LegacyCohort[] | undefined) ?? []) })),
     migrations: ((s.migrations as Raw[] | undefined) ?? []).map((m) => ({ ...m, people: membersFromCohorts((m.people as LegacyCohort[] | undefined) ?? []) })),
+  }),
+  // v28: the entrance and lifts are private rooms, reached by their doors (#563, #565). The
+  // entrance comes lined in marscrete; lifts that don't know what they were built into are rock.
+  // Rooms reached only by walking through one of them get a corridor in.
+  27: (s) => ({
+    ...s,
+    holes: (s.holes as Raw[]).map((h) => {
+      const layout = h.layout as Layout;
+      for (const room of layout.rooms) if (room.type === "entrance") room.material ??= "marscrete";
+      // A room that was reached only through one of them gets the shortest corridor to its door, free.
+      const was = new Set(layout.rooms.filter((r) => r.connected).map((r) => r.id));
+      recomputeAccess(layout);
+      for (const room of layout.rooms) {
+        if (!was.has(room.id) || room.connected) continue;
+        const path = routeToRoom(layout, room, config) ?? [];
+        for (const id of path) layout.corridors[id] = corridors.defaultFinish;
+        if (path.length) recomputeAccess(layout);
+      }
+      return { ...h, layout };
+    }),
   }),
 };
 

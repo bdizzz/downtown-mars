@@ -89,10 +89,10 @@ export function roomForWindows(layout: Layout, edgeId: string, near?: Cell | nul
   return rooms.find((r) => r === at) ?? rooms[0] ?? null;
 }
 
-/** Can a room have windows at all: a room in the rings, private (a walk-through room is open already), more than a plan. */
+/** Can a room have windows at all: a room in the rings, private (a walk-through room is open already), more than a plan; not a lift, solid round its shaft (#565). */
 function glazable(room: RoomInstance): boolean {
   const def = roomDef(room.type);
-  return room.at.kind === "ring" && !def.public && !def.excavationOnly && !room.planned;
+  return room.at.kind === "ring" && !def.public && !def.excavationOnly && !def.lift && !room.planned;
 }
 
 /** What windows along these borders cost: by length, a part-started 10 m counting whole. */
@@ -105,7 +105,7 @@ export function windowCost(layout: Layout, edges: Edge[], cfg: SimConfig = confi
 /** Why windows can't go in (or come out of) these borders of a room, or null if they can. */
 export function windowRefusal(room: RoomInstance | null | undefined, edges: string[], on: boolean): string | null {
   if (!room) return "Windows go in a room's wall: there's no room here";
-  if (!glazable(room)) return roomDef(room.type).public ? "A walk-through room is open already: no windows needed" : room.planned ? "Not dug out yet" : "No windows here";
+  if (!glazable(room)) return roomDef(room.type).public ? "A walk-through room is open already: no windows needed" : roomDef(room.type).lift ? "A lift's shaft is walled in solid: no windows" : room.planned ? "Not dug out yet" : "No windows here";
   if (!on) return edges.some((id) => room.windows?.includes(id)) ? null : "No windows in this wall";
   if (!edges.length) return "Nothing to look out on: windows need a corridor, the shaft or a plaza across the wall";
   if (edges.every((id) => room.windows?.includes(id))) return "Already has windows";

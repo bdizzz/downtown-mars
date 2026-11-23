@@ -138,7 +138,9 @@ export function starterTube(e: Edge): boolean {
  * and how far off it is, in metres.
  */
 export function demolishHoverFor(layout: Layout, resources: Record<string, number>, p: Pick, near: { edge: Edge; m: number } | null): HoverInfo {
-  const info = hoverInfoFor(layout, resources, { kind: "demolish" }, p);
+  const hovered = hoverInfoFor(layout, resources, { kind: "demolish" }, p);
+  // What can't be built can't be demolished either: the entrance and its gatehouse stay (#563).
+  const info = hovered.room && !roomDef(hovered.room.type).buildable ? { ...hovered, room: undefined } : hovered;
   const e = near?.edge;
   if (!e || !layout.corridors[e.id] || starterTube(e)) return info;
   // Rooms keep their interiors; corridors win on their own strip, half a corridor's width either side of the border.

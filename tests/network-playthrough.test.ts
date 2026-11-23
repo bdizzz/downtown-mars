@@ -3,6 +3,7 @@ import { config } from "../src/sim/config";
 import { relation } from "../src/sim/culture";
 import { serialize } from "../src/sim/save";
 import { runNetwork } from "./netbot";
+import { cutOff } from "./adaptive";
 import { construction } from "../src/sim/construction";
 import { storage } from "../src/sim/storage";
 
@@ -26,6 +27,10 @@ describe("first hour, two holes", () => {
     console.log(net.events);
     console.log("solo:", solo.log.filter((d) => d.day % 5 === 0).map((d) => `${d.day}:${d.total}`).join(" "));
   }
+
+  it("ends with one network in every hole: every finished room walked to from the entrance, no stray corridors (#590)", () => {
+    for (const h of [...net.world.holes, ...solo.world.holes]) expect(cutOff(h)).toEqual({ rooms: [], islands: 0 });
+  });
 
   it("opens the map around minute 20 and founds a second hole before minute 55", () => {
     expect(net.log.find((d) => d.total >= 50)!.day).toBeLessThanOrEqual(25);

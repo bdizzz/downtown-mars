@@ -285,6 +285,15 @@ export function removeRows(state: SimState, rows: Iterable<number>): Member[] {
   if (!c) return [];
   const gone = new Set(rows);
   if (!gone.size) return [];
+  // Whoever goes leaves their post at once, so the staffing matches who's left until the next count.
+  for (const i of gone) {
+    const st = c.job[i] !== NONE ? state.roomStatus[c.job[i]!] : undefined;
+    if (st && st.staff > 0) {
+      st.staff--;
+      state.workforce.employed = Math.max(0, state.workforce.employed - 1);
+    }
+    if (c.stage[i] === ADULT) state.workforce.total = Math.max(0, state.workforce.total - 1);
+  }
   const out = [...gone].sort((a, b) => a - b).map((i) => memberAt(c, i));
   const ids = new Set(out.map((m) => m.id));
   const keep: boolean[] = c.id.map((_, i) => !gone.has(i));

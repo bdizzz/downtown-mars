@@ -104,9 +104,11 @@ describe("room linings", () => {
     const s = hole();
     const entrance = s.layout.rooms.find((r) => r.type === "entrance")!;
     const pod = s.layout.rooms.find((r) => r.type === "landing_pod")!;
-    expect(canLine(entrance)).toBe(false);
+    // The entrance has walls of its own (#563), lined in marscrete from the start.
+    expect(canLine(entrance)).toBe(true);
+    expect(entrance.material).toBe("marscrete");
     expect(canLine(pod)).toBe(false);
-    expect(applyCommand(s, { type: "consoleLining", roomId: entrance.id, material: "brick" }).ok).toBe(false);
+    expect(applyCommand(s, { type: "consoleLining", roomId: pod.id, material: "brick" }).ok).toBe(false);
     const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 2));
     expect(applyCommand(s, { type: "consoleLining", roomId: dorm, material: "gold" }).ok).toBe(false);
     expect(applyCommand(s, { type: "consoleLining", roomId: dorm, flooring: "carpet" }).ok).toBe(false);

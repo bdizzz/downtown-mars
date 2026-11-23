@@ -263,7 +263,7 @@ When a material is short, rooms can be built with a substitute. Substitutes cost
 | Room | Size | Staff | Uses | Makes | Neighbor effects | Build cost | Unlock |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Corridor | S | 0 | — | Connects outer rings to the shaft; shortens commutes | Blocks noise and smell passing through | R 5 | Start |
-| Entrance | S | 0 | — | Floor 1's way in from the surface: an airlock at the rim, and where people and goods arrive | — | Landing kit | Start |
+| Entrance | S | 0 | — | Floor 1's way in from the surface: an airlock at the rim, and where people and goods arrive. A walled room with a door (not walk-through, #563), lined in marscrete from the start, can't be demolished | — | Landing kit | Start |
 | Tiny plaza | S | 0 | — | Walk-through gathering corner | Comfort +1 on foot within 4 steps, +0.5 r1 next door | R 5, B 2 | Start |
 | Small plaza | M | 1 | Power 1 | Gathering space | Comfort +1.5 on foot within 6 steps, +0.5 r1 next door | R 10, B 5 | Pop 100 |
 | Plaza (as built) | L | 0 | Power 2 | Walk-through gathering space (transit hub once commutes exist) | Comfort +2 on foot within 8 steps, +2 r2 next door (entertainment +1 r2 once entertainment exists) | B 20, M 5 | Pop 500 |
@@ -297,7 +297,7 @@ The main shaft elevator is the spine, but stairs and extra elevators relieve it.
 | Grand staircase | M, spans 2–3 floors | 0 | — | High-capacity link inside plazas | Comfort +1 r2 | B 20, glass 5 | First plaza |
 | Escalator (parked) | M, spans 1–2 floors | 0 | Power 1 | Fast, high capacity for short trips; boosts shops at both ends | Noise −1 r1 | M 10, Mc 2 | Pop 500 |
 | Local elevator | S, spans up to 8 floors | 0 | Power 1 | Serves a band of floors, easing the main shaft | Noise −1 r1 | M 10, Mc 2 | Pop 150 |
-| Elevator (as built) | S, spans 2–8 floors | 0 | Power 1 | A lift linking floors; extends a floor at a time | Noise −1 r1 | M 10, Mc 2 | Start |
+| Elevator (as built) | S, spans 2–8 floors | 0 | Power 1 | A lift linking floors; extends a floor at a time. Walled, a door a floor, a thick collar round its shaft (#565) | Noise −1 r1 | M 10, Mc 2 | Start |
 | Cargo elevator | S | 1 | Power 3 | Straight from the surface to one floor, if its column above is clear; brings drops in there | Noise −1 r1 | M 40, Mc 8, E 4 | Pop 100 |
 | Freight elevator | S, any span | 1 | Power 2 | Moves goods only, freeing people elevators | Noise −2 r1 | M 15, Mc 3 | Pop 300 |
 | Express elevator | S, any span | 0 | Power 3 | Skips floors; stops only at sky lobbies | — | M 20, Mc 4, E 3 | Pop 2,000 |

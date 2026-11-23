@@ -85,7 +85,7 @@ describe("room condition", () => {
     step(s, config);
     // One lane: the worst.
     expect(maintenanceView(s).lanes.map((l) => l.target)).toEqual([rooms[0]]);
-    const m2 = build(s, "maintenance", ring(1, 2, 1, 1));
+    const m2 = build(s, "maintenance", ring(1, 1, 7, 1));
     step(s, config);
     expect(new Set(maintenanceView(s).lanes.map((l) => l.target))).toEqual(new Set([rooms[0], rooms[1]]));
     for (let i = 0; i < 3 * tpd && conditionOf(room(s, rooms[0]!)) < 1; i++) step(s, config);

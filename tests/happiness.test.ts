@@ -48,7 +48,9 @@ describe("happiness", () => {
     const near = withRooms([["life_support", ring(1, 1, 1, 3)], ["bunk_dorm", ring(1, 1, 5, 2)]]);
     const far = withRooms([["life_support", ring(1, 1, 1, 3)], ["bunk_dorm", ring(1, 1, 6, 2)]]);
     expect(pool(near, "bunk_dorm").factors.noise).toBeLessThan(pool(far, "bunk_dorm").factors.noise);
-    expect(pool(near, "bunk_dorm").target).toBeLessThan(pool(far, "bunk_dorm").target);
+    // Leaving out the entrance's dust, which reaches the far one along the tube (it's nearer the entrance).
+    const calm = (s: SimState) => pool(s, "bunk_dorm").target - (pool(s, "bunk_dorm").points?.airQuality ?? 0);
+    expect(calm(near)).toBeLessThan(calm(far));
   });
 
   it("a clinic nearby lifts health", () => {

@@ -171,6 +171,7 @@ export function createInitialState(
     if (placed.ok) openCells(layout, placed.cells);
     const room = layout.rooms.find((r) => "id" in placed && r.id === placed.id);
     if (room && k.holds) room.holds = k.holds;
+    if (room && k.material) room.material = k.material;
   }
   // Floor 1's gallery comes built, all the way round the shaft.
   for (const e of galleryEdges(layout.hole, 1)) layout.corridors[e.id] = corridors.gallery.id;

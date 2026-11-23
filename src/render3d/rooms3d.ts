@@ -19,6 +19,7 @@ import { onCorridorAt } from "../view/walk";
 import { DOOR, doorways, type Doorway } from "../view/doors";
 import { glazedWalls } from "../sim/windows";
 import { tubeAt } from "../view/gallery";
+import { hasLiftFill, liftFill, type LiftFill } from "../view/liftFill";
 import { finishMaterial, isFlooringLook, isSurfaceLook, withFloor, withFlooring, withFresnel, withGrime, withRefit, withRock, withRoomFlooring, withSurface, type SurfaceLook } from "./surfaces";
 import { roomLook, type Finish } from "../view/roomFinish";
 import { flooringOf } from "../sim/materials";
@@ -2317,6 +2318,7 @@ export function buildLayout(
   for (const [lining, pos] of carved.halls!) if (pos.length) group.add(new THREE.Mesh(geometry(pos), finishWallMaterial(lining)));
 
   const used = new Set<string>();
+  const usedFills = new Set<string>();
   // See-through glass: you can look into a room from the gallery, and out of it.
   const glass = wallMaterial("glass", () =>
     withFresnel(withCondensation(new THREE.MeshStandardMaterial({ color: WINDOW.color, emissive: 0x2a3f55, roughness: 0.1, metalness: 0.3, transparent: true, opacity: WINDOW.opacity, depthWrite: false, side: THREE.DoubleSide }))),
@@ -2414,6 +2416,24 @@ export function buildLayout(
       }
     }
 
+    // A lift's thick collar round its shaft (#565), on each floor shown.
+    if (hasLiftFill(whole)) {
+      for (const floor of [...new Set(room.cells.map((c) => c.floor))]) {
+        const fill = liftFill(layout, whole, floor);
+        if (!fill?.runs.length) continue;
+        const key = `${whole.id}:${floor}:${fill.look}:${fill.runs.map((r) => `${r.r0.toFixed(2)},${r.a0.toFixed(4)},${r.a1.toFixed(4)}`).join(";")}`;
+        let geo = fillCache.get(key);
+        if (!geo) {
+          geo = liftFillGeometry(fill);
+          fillCache.set(key, geo);
+        }
+        usedFills.add(key);
+        const mesh = new THREE.Mesh(geo, finishWallMaterial(fill.look));
+        mesh.userData = { pickable: true, roomId: room.id, cached: true };
+        group.add(mesh);
+      }
+    }
+
     // Its windows and doors: glass in the openings the shape cut, and a frame round each doorway.
     if (!room.planned) {
       if (shape.glass) group.add(new THREE.Mesh(shape.glass, glass));
@@ -2444,7 +2464,38 @@ export function buildLayout(
     disposeFurniture(g);
     furnitureCache.delete(key);
   }
+  for (const [key, g] of fillCache) {
+    if (usedFills.has(key)) continue;
+    g.dispose();
+    fillCache.delete(key);
+  }
   return group;
+}
+
+const fillCache = new Map<string, THREE.BufferGeometry>();
+
+/** A lift's collar as solid ring sectors standing floor to ceiling: their tops and sides (#565). */
+function liftFillGeometry(fill: LiftFill): THREE.BufferGeometry {
+  const y0 = fill.frame.y;
+  const y1 = floorSpan(fill.floor)[1] - 0.02;
+  const pos: number[] = [];
+  const at = (r: number, a: number, y: number) => [r * Math.cos(a), y, r * Math.sin(a)];
+  const face = (a: number[], b: number[], c: number[], d: number[]) => pos.push(...a, ...b, ...c, ...a, ...c, ...d);
+  for (const { r0, r1, a0, a1 } of fill.runs) {
+    const n = Math.max(1, Math.ceil((a1 - a0) / (TAU / 180)));
+    for (let i = 0; i < n; i++) {
+      const b0 = a0 + ((a1 - a0) * i) / n;
+      const b1 = a0 + ((a1 - a0) * (i + 1)) / n;
+      face(at(r0, b0, y1), at(r1, b0, y1), at(r1, b1, y1), at(r0, b1, y1));
+      face(at(r0, b0, y0), at(r0, b0, y1), at(r0, b1, y1), at(r0, b1, y0));
+      face(at(r1, b0, y0), at(r1, b1, y0), at(r1, b1, y1), at(r1, b0, y1));
+    }
+    face(at(r0, a0, y0), at(r1, a0, y0), at(r1, a0, y1), at(r0, a0, y1));
+    face(at(r0, a1, y0), at(r0, a1, y1), at(r1, a1, y1), at(r1, a1, y0));
+  }
+  const g = geometry(pos);
+  g.computeVertexNormals();
+  return g;
 }
 
 // ---- empty space, and what stands at the rim ----

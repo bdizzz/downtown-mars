@@ -8,6 +8,7 @@ import type { Hole } from "../sim/geometry";
 import { canLine, liningOf, MATERIALS } from "../sim/materials";
 import { roomAt, type Cell, type Layout, type RoomInstance } from "../sim/placement";
 import { roomLabel } from "../sim/roomName";
+import { liftFill } from "../view/liftFill";
 import { roomDef } from "../sim/rooms";
 import { glazedWalls } from "../sim/windows";
 import { openShaftRadius, slotAngles } from "../render3d/cylinder";
@@ -218,6 +219,9 @@ export function drawRooms(g: GraphicsContext, l: Layout, floor: number, opts: Ro
       else if (room.building) g.poly(poly).fill({ color, alpha: 0.4 }).poly(poly).fill(opts.stripes);
       else g.poly(poly).fill(color);
     }
+    // A lift's thick collar round its shaft (#565): rock or marscrete, as it was built into.
+    const fill = liftFill(l, room, floor);
+    if (fill) for (const r of fill.runs) g.poly(sector(r.r0, r.r1, r.a0, r.a1)).fill(FINISH_COLORS[fill.look]!);
     // Under construction: an orange outline, like tape around the works.
     // A built walk-through room has no wall onto open space beside it (#564), so no line there.
     const mine = new Set(room.cells.map((c) => `${c.floor}:${c.ring}:${c.slot}`));
