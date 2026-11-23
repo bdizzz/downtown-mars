@@ -1357,6 +1357,7 @@ kbd {
 .tool-cost.short { color: #ff8a6c; }
 .tool-bar .done { margin-left: auto; }
 .tool-bar .dock-hint { margin-left: 0; padding-left: 0; flex: 1 1 80px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tool-bar .dock-hint.cam-keys { flex: 0 1 auto; margin-left: auto; opacity: 0.75; }
 /* Clear of the rail. */
 .cam-readout, .event-cards { left: 90px; }
 .event-cards { top: 40px; }
