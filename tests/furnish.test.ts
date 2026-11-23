@@ -213,8 +213,7 @@ describe("the templates", () => {
         expect(floors.length, key).toBeGreaterThan(0);
         for (const { floor } of floors) {
           const items = fit(frameOf(layout, room, floor)!, t);
-          // A lift is a solid core round its shaft (#565): just the car and its call panel.
-          expect(items.length, `${key} in ring ${r}`).toBeGreaterThanOrEqual(roomDef(type).lift ? 2 : 3);
+          expect(items.length, `${key} in ring ${r}`).toBeGreaterThanOrEqual(3);
           items.forEach((i) => used.add(i.placement));
         }
       }
@@ -229,9 +228,8 @@ describe("busier templates (#551, #552)", () => {
   // open rooms; the storeroom's shelving aisles and the crypt's thin niche walls sit a little under.
   const BUSY = [
     "heater", "radiator", "ventilation_hub", "gas_tank", "battery_bank", "waste_storage", "site_office", "cleaning_service", "maintenance",
-    "kitchen", "hospital", "gym", "machine_shop", "brickworks", "glassworks", "restroom", "stairwell", "spiral_stair", "cargo_elevator",
+    "kitchen", "hospital", "gym", "machine_shop", "brickworks", "glassworks", "restroom", "stairwell", "spiral_stair", "elevator", "cargo_elevator",
   ];
-  // Not the elevator: it's a solid core round its shaft (#565), filled rather than furnished.
   const OPEN = ["storeroom", "crypt", "tiny_plaza", "small_plaza", "plaza", "park"];
   const covered = (type: string, r: number) => {
     const [w, d] = roomShapes(roomDef(type))[0]!;

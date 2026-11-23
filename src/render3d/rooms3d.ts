@@ -2416,7 +2416,7 @@ export function buildLayout(
       }
     }
 
-    // A lift's solid core round its shaft (#565), on each floor shown.
+    // A lift's thick collar round its shaft (#565), on each floor shown.
     if (hasLiftFill(whole)) {
       for (const floor of [...new Set(room.cells.map((c) => c.floor))]) {
         const fill = liftFill(layout, whole, floor);
@@ -2474,7 +2474,7 @@ export function buildLayout(
 
 const fillCache = new Map<string, THREE.BufferGeometry>();
 
-/** A lift's fill as solid ring sectors standing floor to ceiling: their tops and sides (#565). */
+/** A lift's collar as solid ring sectors standing floor to ceiling: their tops and sides (#565). */
 function liftFillGeometry(fill: LiftFill): THREE.BufferGeometry {
   const y0 = fill.frame.y;
   const y1 = floorSpan(fill.floor)[1] - 0.02;

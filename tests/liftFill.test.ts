@@ -3,7 +3,9 @@ import { applyCommand } from "../src/sim/commands";
 import { config } from "../src/sim/config";
 import { ensureFloors, type Location } from "../src/sim/placement";
 import { createInitialState, type SimState } from "../src/sim/state";
-import { liftFill } from "../src/view/liftFill";
+import { furnish } from "../src/view/furnish";
+import { itemDef } from "../src/view/furniture";
+import { LIFT_FILL, liftFill } from "../src/view/liftFill";
 import { regionAt } from "../src/view/walk";
 
 const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
@@ -17,8 +19,8 @@ function deep(): SimState {
   return s;
 }
 
-describe("a lift's solid core (#565)", () => {
-  it("fills round the shaft but for a landing and the way in from its door, in what it was built into", () => {
+describe("a lift's shaft is walled thick (#565)", () => {
+  it("has a solid collar round the car, open in front of its doors, in what it was built into; the rest is lobby", () => {
     const s = deep();
     const r = applyCommand(s, { type: "build", room: "elevator", at: ring(1, 1, 5) });
     if (!r.ok) throw new Error(r.reason);
@@ -29,15 +31,20 @@ describe("a lift's solid core (#565)", () => {
     expect(f1.look).toBe("marscrete"); // floor 1's ring came dug out
     expect(f2.look).toBe("rock");
     expect(f1.runs.length).toBeGreaterThan(0);
-    // The back corners are solid; the middle of the front (the door onto the tube) is open.
-    const { frame } = f1;
-    const corner = frame.rOut - 0.3;
-    const a = frame.left(corner) + 0.02;
-    expect(f1.open(corner * Math.cos(a), corner * Math.sin(a))).toBe(false);
-    expect(regionAt(s.layout, 1, corner * Math.cos(a), corner * Math.sin(a))).toBeNull();
-    const rd = frame.rIn + 1.5;
-    const mid = (frame.left(rd) + frame.right(rd)) / 2;
-    expect(f1.open(rd * Math.cos(mid), rd * Math.sin(mid))).toBe(true);
-    expect(regionAt(s.layout, 1, rd * Math.cos(mid), rd * Math.sin(mid))).toBe(`room:${lift.id}`);
+    // In the shaft's own frame: X across its doors, Z out of them.
+    const shaft = furnish(s.layout, lift).find((f) => f.floor === 1 && f.item.startsWith("elevator_"))!;
+    const [w, d] = itemDef(shaft.item).size;
+    const at = (u: number, v: number): [number, number] => [
+      shaft.x + u * Math.cos(shaft.turn) + v * Math.sin(shaft.turn),
+      shaft.z - u * Math.sin(shaft.turn) + v * Math.cos(shaft.turn),
+    ];
+    const beside = at(w / 2 + LIFT_FILL.margin + LIFT_FILL.thick / 2, 0);
+    const front = at(0, d / 2 + LIFT_FILL.margin + LIFT_FILL.thick / 2);
+    const lobby = at(0, d / 2 + LIFT_FILL.margin + LIFT_FILL.thick + 1);
+    expect(f1.open(...beside)).toBe(false);
+    expect(regionAt(s.layout, 1, ...beside)).toBeNull();
+    expect(f1.open(...front)).toBe(true);
+    expect(f1.open(...lobby)).toBe(true);
+    expect(regionAt(s.layout, 1, ...lobby)).toBe(`room:${lift.id}`);
   });
 });

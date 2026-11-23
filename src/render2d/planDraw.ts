@@ -219,7 +219,7 @@ export function drawRooms(g: GraphicsContext, l: Layout, floor: number, opts: Ro
       else if (room.building) g.poly(poly).fill({ color, alpha: 0.4 }).poly(poly).fill(opts.stripes);
       else g.poly(poly).fill(color);
     }
-    // A lift's solid core round its shaft (#565): rock or marscrete, as it was built into.
+    // A lift's thick collar round its shaft (#565): rock or marscrete, as it was built into.
     const fill = liftFill(l, room, floor);
     if (fill) for (const r of fill.runs) g.poly(sector(r.r0, r.r1, r.a0, r.a1)).fill(FINISH_COLORS[fill.look]!);
     // Under construction: an orange outline, like tape around the works.

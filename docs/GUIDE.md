@@ -111,7 +111,7 @@ Pause any staffed room, or have it stop at a stock level, from its Work section.
 ## Getting in and out
 
 - People and goods come in through the **entrance** on floor 1 (its airlock is a concrete gatehouse built against the collar's rim). It's a walled room with a door onto the gallery, lined in marscrete from the start (change its lining like any room's); you can't walk through it to a room behind it, and it and its gatehouse can't be demolished.
-- Deeper floors are reached only by **stairs** or elevators down from there. An elevator is a walled shaft with a door on each floor it opens onto (wherever a corridor, tube or walk-through room runs along it): round the car it's solid, rock where it was dug from rock and marscrete where it was built over dug-out space, with a landing and a passage to the door.
+- Deeper floors are reached only by **stairs** or elevators down from there. An elevator is a walled shaft with a door on each floor it opens onto (wherever a corridor, tube or walk-through room runs along it): its shaft is walled thick, a solid collar round the car open in front of its doors, in rock where it was dug from rock and marscrete where it was built over dug-out space; the rest of the room is its lobby.
 - At 100 colonists a **cargo elevator** can run from the surface straight down to one floor, if its column above is clear.
 
 ## Homes
