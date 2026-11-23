@@ -6,6 +6,7 @@ import { roomDef } from "../sim/rooms";
 import { FLOOR_H, openShaftRadius, TAU, WALL_T } from "../render3d/cylinder";
 import { doorsOnFloor, inDoorway } from "./doors";
 import { furnish, isFlat } from "./furnish";
+import { hasLiftFill, liftFill } from "./liftFill";
 import { isMounted, itemDef } from "./furniture";
 import { circleRadius, outerRadius, ringAt, ringRadii } from "../sim/geometry";
 
@@ -54,6 +55,8 @@ export function regionAt(layout: Layout, floor: number, x: number, z: number): R
   if (!built(room)) return null;
   // A cargo elevator's floors above its stop are its shaft: nowhere to stand.
   if (roomDef(room.type).cargoShaft && floor !== Math.max(...room.cells.map((c) => c.floor))) return null;
+  // A lift is solid round its shaft, but for its landing and the way in from its door (#565).
+  if (hasLiftFill(room) && !liftFill(layout, room, floor)?.open(x, z)) return null;
   if (!roomDef(room.type).public) return `room:${room.id}`;
   return walkThrough(room, floor) ? OPEN : null;
 }
