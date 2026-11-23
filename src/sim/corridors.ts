@@ -355,6 +355,9 @@ function floorGraph(hole: Hole, floor: number): Map<string, { e: Edge; to: strin
  * from anything linked to the shaft to one of the room's own sides.
  * Returns null if there's no way, or [] if it's already connected.
  */
+/** Where a route that starts along a lift's wall comes from (no vertex has this name). */
+const LIFT_START = "lift";
+
 export function routeToRoom(layout: Layout, room: RoomInstance, _cfg: SimConfig): string[] | null {
   if (room.connected || room.at.kind !== "ring") return room.at.kind === "ring" ? [] : null;
   const hole = layout.hole;
@@ -377,6 +380,26 @@ export function routeToRoom(layout: Layout, room: RoomInstance, _cfg: SimConfig)
     }
   }
   let best: { cost: number; at: string; e: Edge } | null = null;
+  // A lift that's reached on another floor opens onto this one wherever a corridor runs along it (#565):
+  // its walls here are a start too, the first corridor laid along one.
+  for (const lift of layout.rooms) {
+    const def = roomDef(lift.type);
+    if (lift === room || !lift.connected || lift.planned || lift.building || lift.at.kind !== "ring" || def.public || !def.lift) continue;
+    for (const e of outsideEdges(hole, openTo(lift).filter((c) => c.floor === floor))) {
+      if (walkable(e) || !usable(e)) continue;
+      const len = edgeLengthM(hole, e);
+      if (goal.has(e.id)) {
+        if (!best || len < best.cost) best = { cost: len, at: LIFT_START, e };
+        continue;
+      }
+      for (const v of edgeVertices(hole, e)) {
+        if (len >= (dist.get(v) ?? Infinity)) continue;
+        dist.set(v, len);
+        prev.set(v, { from: LIFT_START, e });
+        queue.push([len, v]);
+      }
+    }
+  }
   while (queue.length) {
     queue.sort((a, b) => a[0] - b[0]);
     const [d, v] = queue.shift()!;

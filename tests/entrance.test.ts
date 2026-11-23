@@ -110,13 +110,26 @@ describe("the entrance is a room of its own (#563)", () => {
     expect(s.layout.rooms.find((r) => r.id === behind.id)!.connected).toBe(true);
   });
 
-  it("old saves line their entrance in marscrete", () => {
-    const raw = JSON.parse(serialize(createWorld(config)));
+  it("old saves line their entrance in marscrete, and give a room reached only through it a corridor in", () => {
+    const world = createWorld(config);
+    const s = world.holes[0]!;
+    Object.assign(s.resources, { rock: 400, brick: 200, metal: 200 });
+    const behind = build(s, "galley", ring(1, 2, 0));
+    const raw = JSON.parse(serialize(world));
     raw.version = 27;
-    for (const h of raw.state.holes) for (const r of h.layout.rooms) delete r.material;
+    for (const h of raw.state.holes) {
+      for (const r of h.layout.rooms) {
+        delete r.material;
+        // As it was: reached by walking through the entrance.
+        if (r.id === behind.id) r.connected = true;
+      }
+    }
     const back = deserialize(JSON.stringify(raw));
     if (!back.ok) throw new Error(back.reason);
-    expect(back.world.holes[0]!.layout.rooms.find((r) => r.type === "entrance")!.material).toBe("marscrete");
+    const layout = back.world.holes[0]!.layout;
+    expect(layout.rooms.find((r) => r.type === "entrance")!.material).toBe("marscrete");
+    expect(layout.rooms.find((r) => r.id === behind.id)!.connected).toBe(true);
+    expect(Object.keys(layout.corridors).length).toBeGreaterThan(Object.keys(raw.state.holes[0].layout.corridors).length);
   });
 });
 
@@ -137,6 +150,17 @@ describe("lifts are private rooms (#565)", () => {
     expect(s.layout.rooms.find((r) => r.id === beside.id)!.connected).toBe(true);
     expect(stepsBetween(s.layout, up.id, beside.id)).not.toBeNull();
     expect(doorways(s.layout, lift).map((d) => d.floor)).toEqual([1, 2]);
+  });
+
+  it("a floor reached only by a lift can be joined up from its door", () => {
+    const s = deep();
+    build(s, "galley", ring(1, 1, 3)); // anything, so floor 1 is in use
+    build(s, "elevator", ring(1, 1, 5)); // floors 1–2
+    const far = build(s, "clinic", ring(2, 1, 8));
+    expect(far.connected).toBe(false);
+    expect(applyCommand(s, { type: "connectRoom", roomId: far.id, finish: "rock" }).ok).toBe(true);
+    applyCommand(s, { type: "consoleFinish" });
+    expect(s.layout.rooms.find((r) => r.id === far.id)!.connected).toBe(true);
   });
 
   it("remember what they were built into: marscrete over dug-out space, rock where dug from rock", () => {
