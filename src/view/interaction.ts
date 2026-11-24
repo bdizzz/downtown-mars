@@ -5,7 +5,7 @@ import { checkPlacement, roomAt, surfaceRoomId, type Cell, type Layout, type Loc
 import { roomDef } from "../sim/rooms";
 import { effectName } from "../sim/effects";
 import { isOpen } from "../sim/excavation";
-import { bulkheadRefusal, corridorCost, corridorRefusal, corridors, inUnlockedRings, shortfall } from "../sim/corridors";
+import { bulkheadHalf, bulkheadRefusal, halfAt, corridorCost, corridorRefusal, corridors, inUnlockedRings, shortfall } from "../sim/corridors";
 import { cellEdges, edgeById, edgeVertices, isGalleryEdge, type Edge } from "../sim/edges";
 import { ringSize } from "../sim/geometry";
 import { glazedAcross, glazedOnWall, roomForWindows, wallOf, windowComfort, windowCost, windowRefusal } from "../sim/windows";
@@ -88,8 +88,11 @@ export function hoverInfoFor(layout: Layout, resources: Record<string, number>, 
   return info;
 }
 
-/** Hover info for the corridor tool: the border under the pointer, and what drawing (or erasing) it would do. */
-export function edgeHoverFor(layout: Layout, resources: Record<string, number>, tool: Extract<Tool, { kind: "corridor" }>, p: Pick, edge: Edge | null, erase: boolean): HoverInfo {
+/**
+ * Hover info for the corridor tool: the border under the pointer, and what drawing (or erasing) it would do.
+ * `along` is how far along the border the pointer is (0 to 1, as alongEdge): the bulkhead tool goes in that half (#569).
+ */
+export function edgeHoverFor(layout: Layout, resources: Record<string, number>, tool: Extract<Tool, { kind: "corridor" }>, p: Pick, edge: Edge | null, erase: boolean, along = 0.5): HoverInfo {
   const info: HoverInfo = { pick: p };
   // Past the rings opened so far there's nothing to point at (#556).
   if (!edge || !inUnlockedRings(layout.hole, edge)) return info;
@@ -104,8 +107,12 @@ export function edgeHoverFor(layout: Layout, resources: Record<string, number>, 
     return info;
   }
   if (tool.bulkhead) {
-    const refusal = bulkheadRefusal(layout, edge.id, !removing) ?? (removing ? null : shortfall(resources, corridors.bulkhead.cost));
-    info.edge = { id: edge.id, refusal, cost: removing ? {} : corridors.bulkhead.cost, erase: removing, bulkhead: true, ...(finish ? { finish, linked: !!layout.corridorLinked?.[edge.id] } : {}) };
+    // Taking one out lights the half it's in; fitting one, the half under the pointer. Moving one across is free.
+    const had = bulkheadHalf(layout, edge.id);
+    const half = removing ? (had ?? halfAt(along)) : halfAt(along);
+    const cost = removing || had ? {} : corridors.bulkhead.cost;
+    const refusal = bulkheadRefusal(layout, edge.id, !removing, half) ?? shortfall(resources, cost);
+    info.edge = { id: edge.id, refusal, cost, erase: removing, bulkhead: true, half, ...(finish ? { finish, linked: !!layout.corridorLinked?.[edge.id] } : {}) };
     return info;
   }
   if (removing) {
@@ -233,11 +240,16 @@ function windowHover(layout: Layout, resources: Record<string, number>, p: Pick,
   return { pick: p, edge: { id: edge.id, refusal, cost, erase: removing, windows: { roomId: room?.id ?? 0, edges: ids.length ? ids : [edge.id], across, comfort } } };
 }
 
+/** The part of a border the hover lights (0 to 1 along it): the bulkhead tool's half, else all of it. */
+export function hoverSpan(edge: EdgeHover): [number, number] {
+  return edge.half === "a" ? [0, 0.5] : edge.half === "b" ? [0.5, 1] : [0, 1];
+}
+
 /** The command for drawing (or erasing) a corridor on the border under the pointer. */
 export function corridorCommand(tool: Tool, edge: EdgeHover | undefined): SimCommand | null {
   if (tool?.kind !== "corridor" || !edge) return null;
   if (tool.windows) return edge.windows?.roomId ? { type: "setWindows", roomId: edge.windows.roomId, edges: edge.windows.edges, on: !edge.erase } : null;
-  if (tool.bulkhead) return { type: "setBulkhead", edges: [edge.id], on: !edge.erase };
+  if (tool.bulkhead) return { type: "setBulkhead", edges: [edge.id], on: !edge.erase, ...(edge.half ? { half: edge.half } : {}) };
   if (tool.refit) return refitCommand([edge.id], tool.refit);
   return edge.erase ? { type: "removeCorridors", edges: [edge.id] } : { type: "drawCorridors", edges: [edge.id], finish: tool.finish };
 }

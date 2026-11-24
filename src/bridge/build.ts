@@ -9,13 +9,13 @@ import type { Location, SurfaceSpot } from "../sim/placement";
 import { floorSpan, pickAt, TAU } from "../render3d/cylinder";
 import { corridorGhostY, corridorStripGeometry, roomGeometry } from "../render3d/rooms3d";
 import { corridors } from "../sim/corridors";
-import { edgeById, nearestEdge, type Edge } from "../sim/edges";
+import { alongEdge, edgeById, nearestEdge, type Edge } from "../sim/edges";
 import { roomSide } from "../sim/windows";
 import { EMPTY_CHAIN, extendChain, type Chain } from "../view/corridorPlan";
 import { proposalSummary, type ProposalSummary } from "../view/corridorProposal";
 import type { Proposal } from "../view/types";
 import { CATEGORY_NAMES, CATEGORY_ORDER, HOTKEYS, shapesFor } from "../view/buildCatalog";
-import { corridorCommand, edgeHoverFor, liningFields, locationFor, surfaceSpots } from "../view/interaction";
+import { corridorCommand, edgeHoverFor, hoverSpan, liningFields, locationFor, surfaceSpots } from "../view/interaction";
 import { buildLiningCost, canLineAt, liningById, liningCost, liningId, MATERIALS, type WallStep } from "../sim/materials";
 import { surfaceSpotGeometry } from "../render3d/scenery3d";
 import { resName } from "../ui/format";
@@ -273,6 +273,9 @@ function edgeAt(state: SimState, at: [number, number, number]) {
   return { pick: p, edge: nearestEdge(hole, p.floor, point.rings, point.turn), point };
 }
 
+/** How far along the border the point is (0 to 1), for the bulkhead tool's half. */
+const alongAt = (edge: Edge, point: { rings: number; turn: number } | null) => (point ? alongEdge(edge, point.rings, point.turn) : 0.5);
+
 export interface EdgeHoveredMessage {
   type: "edgeHovered";
   ok: boolean;
@@ -284,16 +287,17 @@ export interface EdgeHoveredMessage {
 
 /** What the tool would do at the border under the pointer: its cost, or why not (view/interaction.ts edgeHoverFor). */
 export function edgeHover(state: SimState, tool: CorridorTool, at: [number, number, number]): EdgeHoveredMessage {
-  const { pick, edge } = edgeAt(state, at);
+  const { pick, edge, point } = edgeAt(state, at);
   if (!edge || !("floor" in pick)) return { type: "edgeHovered", ok: false, text: "Point at a border between cells", cost: "" };
-  const info = edgeHoverFor(state.layout, state.resources, { kind: "corridor", ...tool }, pick, edge, tool.erase).edge;
+  const info = edgeHoverFor(state.layout, state.resources, { kind: "corridor", ...tool }, pick, edge, tool.erase, alongAt(edge, point)).edge;
   // Windows: the room's whole wall, each border only on the room's half (as stage3d.ts drawOverlay).
   const w = info?.windows;
   const room = w?.roomId ? state.layout.rooms.find((r) => r.id === w.roomId) : undefined;
   const edges = room && w ? w.edges.map((id) => edgeById(state.layout.hole, id)).filter((e): e is Edge => !!e) : [edge];
   const pos: number[] = [];
   for (const e of edges) {
-    const geo = corridorStripGeometry(state.layout, e, room ? floorSpan(e.floor)[0] + 0.08 : corridorGhostY(state.layout, e), room ? (roomSide(state.layout, room, e) ?? undefined) : undefined);
+    // The bulkhead tool lights only the half it'd go in (#569).
+    const geo = corridorStripGeometry(state.layout, e, room ? floorSpan(e.floor)[0] + 0.08 : corridorGhostY(state.layout, e), room ? (roomSide(state.layout, room, e) ?? undefined) : undefined, info ? hoverSpan(info) : undefined);
     pos.push(...(geo.getAttribute("position") as THREE.BufferAttribute).array);
     geo.dispose();
   }
@@ -310,9 +314,9 @@ export function edgeHover(state: SimState, tool: CorridorTool, at: [number, numb
 
 /** The command for the tool at the border under the pointer (sent even if our view says no while painting: the sim decides), or why not. */
 export function edgeCommand(state: SimState, tool: CorridorTool, at: [number, number, number]): { command?: SimCommand; refusal?: string } {
-  const { pick, edge } = edgeAt(state, at);
+  const { pick, edge, point } = edgeAt(state, at);
   if (!edge || !("floor" in pick)) return { refusal: "Point at a border between cells" };
-  const info = edgeHoverFor(state.layout, state.resources, { kind: "corridor", ...tool }, pick, edge, tool.erase).edge;
+  const info = edgeHoverFor(state.layout, state.resources, { kind: "corridor", ...tool }, pick, edge, tool.erase, alongAt(edge, point)).edge;
   const command = corridorCommand({ kind: "corridor", ...tool }, info);
   return command ? { command, ...(info?.refusal ? { refusal: info.refusal } : {}) } : { refusal: info?.refusal ?? "Nothing to do here" };
 }

@@ -319,7 +319,7 @@ export function BuildRail({ active, setActive, tool, setTool, resources, canUndo
                       <button
                         className={`tile${bulkheadOn ? " on" : ""}${highlight === "tool:bulkhead" && !bulkheadOn ? " pulse" : ""}${freshClass(reveal, "tool:bulkhead")}`}
                         onClick={() => setTool(bulkheadOn ? null : { kind: "corridor", finish: lastFinish, erase: false, bulkhead: true })}
-                        title={`${corridors.bulkhead.hint}. Click a built corridor to fit one; with Erase, to take one out, free.`}
+                        title={`${corridors.bulkhead.hint}. Click a half of a built corridor to fit one there, or the other half to move it; with Erase, to take one out, free.`}
                       >
                         <span className="swatch" />
                         <span className="name">{corridors.bulkhead.name}</span>
@@ -493,7 +493,7 @@ function CorridorBar({ tool, setTool, resources, reveal = SHOW_ALL }: Pick<BarPr
   ].filter((m) => m.shown);
   const hint =
     mode === "windows" ? "Hover a room's wall: it lights up where windows can go"
-    : mode === "bulkhead" ? "Click a corridor to seal it: air and smell stop there"
+    : mode === "bulkhead" ? "Click a corridor's half to seal it there: doors past it are cut off from air and smell"
     : mode === "refit" ? "Click a built corridor, or drag along several"
     : tool.erase ? "Drag along corridors to fill them in: it costs as much as carving"
     : "Drag along the borders between rooms";

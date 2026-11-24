@@ -42,6 +42,8 @@ export interface EdgeHover {
   erase: boolean;
   /** The bulkhead tool: fitting (or taking out) a bulkhead, not a corridor. */
   bulkhead?: boolean;
+  /** The bulkhead tool: the half of the segment under the pointer (or the one its bulkhead is in, taking it out), the only half lit (#569). */
+  half?: "a" | "b";
   /** The refit tool: the lining a built corridor would be refitted in. */
   refit?: string;
   /** The windows tool: the room, the borders of its wall that would be glazed (or cleared), what's across, and the comfort it'd give a home. */

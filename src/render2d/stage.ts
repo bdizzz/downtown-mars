@@ -11,12 +11,12 @@ import { roomAt, surfaceRingOf, type Cell, type Layout, type RoomInstance } from
 import { doorsOnFloor } from "../view/doors";
 import { glazedWalls } from "../sim/windows";
 import { isOpen } from "../sim/excavation";
-import { edgeById, edgeSides, galleryEdges, isGalleryEdge, nearestEdge, nearestEdgeAt, type Edge } from "../sim/edges";
-import { corridorJoints, corridors, hasBulkhead } from "../sim/corridors";
+import { alongEdge, edgeById, edgeSides, galleryEdges, isGalleryEdge, nearestEdge, nearestEdgeAt, type Edge } from "../sim/edges";
+import { bulkheadAt, corridorJoints, corridors } from "../sim/corridors";
 import { constructionStripes, corridorBand } from "./corridorArt";
 import { roomDef } from "../sim/rooms";
 import { previewEffects, type EffectField } from "../sim/effects";
-import { clickWith, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor, haloEffect, CORRIDOR_MAP as MAP, corridorMap, demolishHoverFor, mapJoints } from "../view/interaction";
+import { clickWith, edgeHoverFor, hoverSpan, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor, haloEffect, CORRIDOR_MAP as MAP, corridorMap, demolishHoverFor, mapJoints } from "../view/interaction";
 import { EMPTY_CHAIN, extendChain, type Chain, type ChainPoint } from "../view/corridorPlan";
 import type { HoverInfo, Proposal, Stage, StageOptions, Tool, Warning } from "../view/types";
 import { isTouch, LongPress, TAP_SLOP, TapToAim, Touches, type Gesture } from "../view/touch";
@@ -546,8 +546,9 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       const BAND = b.thick;
       corridorBand(roomsCtx, b.x, b.y, b.len, BAND, b.along, finish, planned || building ? 0.45 : 1);
       // A bulkhead: a sealed door across the corridor, in hazard stripes.
-      if (hasBulkhead(l, id)) {
-        const [bx, by, bw, bh] = b.along === "h" ? [b.x + b.len / 2 - 2.5, b.y - 1, 5, BAND + 2] : [b.x - 1, b.y + b.len / 2 - 2.5, BAND + 2, 5];
+      const seal = bulkheadAt(l, id);
+      if (seal !== null) {
+        const [bx, by, bw, bh] = b.along === "h" ? [b.x + b.len * seal - 2.5, b.y - 1, 5, BAND + 2] : [b.x - 1, b.y + b.len * seal - 2.5, BAND + 2, 5];
         roomsCtx.rect(bx, by, bw, bh).fill(0x3b3f45);
         for (let k = 0; k < (b.along === "h" ? bh : bw); k += 4) {
           if (b.along === "h") roomsCtx.rect(bx, by + k, bw, 2).fill(0xe0a03a);
@@ -713,11 +714,14 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
   }
 
   /** A border highlighted: its band outlined in a colour, with the finish previewed if given. */
-  function ghostEdge(id: string, color: number, finish: string | null, alpha: number): void {
+  function ghostEdge(id: string, color: number, finish: string | null, alpha: number, span: [number, number] = [0, 1]): void {
     if (!layout) return;
     const e = edgeById(layout.hole, id);
     if (!e) return;
-    const b = bandOf(layout.hole, e);
+    // Only part of it: the bulkhead tool's half (#569).
+    const whole = bandOf(layout.hole, e);
+    const from = whole.len * span[0];
+    const b = { ...whole, len: whole.len * (span[1] - span[0]), ...(whole.along === "h" ? { x: whole.x + from } : { y: whole.y + from }) };
     const [w, hh] = b.along === "h" ? [b.len, BAND] : [BAND, b.len];
     if (finish) corridorBand(overlayCtx, b.x, b.y, b.len, BAND, b.along, finish, 0.7);
     overlayCtx.rect(b.x, b.y, w, hh).fill({ color, alpha }).stroke({ color, width: 2.5 });
@@ -783,7 +787,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       const color = info.edge.refusal ? C.bad : info.edge.erase ? C.bad : C.ok;
       const preview = !info.edge.erase && !info.edge.refusal && tool?.kind === "corridor" && !info.edge.windows ? tool.finish : null;
       // The windows tool lights up the whole wall it would glaze.
-      for (const id of info.edge.windows?.edges ?? [info.edge.id]) ghostEdge(id, color, preview, info.edge.erase ? 0.35 : 0.15);
+      for (const id of info.edge.windows?.edges ?? [info.edge.id]) ghostEdge(id, color, preview, info.edge.erase ? 0.35 : 0.15, hoverSpan(info.edge));
       return;
     }
 
@@ -953,7 +957,11 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     if (!layout || !pointer) return null;
     const [x, y] = screenToWorld(pointer);
     const p = pick(layout.hole, x, y);
-    if (tool?.kind === "corridor") return edgeHoverFor(layout, resources, tool, p, edgeAt(x, y), shift);
+    if (tool?.kind === "corridor") {
+      const edge = edgeAt(x, y);
+      const at = pointAt(x, y);
+      return edgeHoverFor(layout, resources, tool, p, edge, shift, edge && at ? alongEdge(edge, at.rings, at.turn) : 0.5);
+    }
     if (tool?.kind === "demolish") {
       const at = pointAt(x, y);
       return demolishHoverFor(layout, resources, p, at ? nearestEdgeAt(layout.hole, at.floor, at.rings, at.turn) : null);
