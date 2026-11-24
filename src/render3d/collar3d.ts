@@ -51,7 +51,7 @@ export const KIT_COLOR = {
   lamp: 0xffb35c,
   beacon: 0xff4a30,
   cabinet: 0x6b7a5a,
-  hull: 0xd9d4cc, // painted panels: the landing pod's hull, cabinets, the rovers' cabins
+  hull: 0xd9d4cc, // painted panels: the landing pod's hull, cabinets, the rovers' pressure hulls
 };
 
 /**
