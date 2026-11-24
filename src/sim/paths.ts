@@ -1,7 +1,7 @@
 import { config } from "./config";
-import { hasBulkhead, openTo } from "./corridors";
-import { cellEdges, edgeById, edgeLengthM, edgeVertices, galleryEdges, outsideEdges } from "./edges";
-import { deadEnds } from "./deadEnds";
+import { bulkheadAt, openTo } from "./corridors";
+import { alongEdgeAt, cellEdges, edgeById, edgeLengthM, edgeVertices, galleryEdges, outsideEdges, type Edge } from "./edges";
+import { deadEnds, doorAlong } from "./deadEnds";
 import { emptyCells } from "./excavation";
 import type { Cell, Layout, RoomInstance } from "./placement";
 import { roomDef } from "./rooms";
@@ -19,6 +19,12 @@ import { roomDef } from "./rooms";
 // corridor that ends against its wall (deadEnds.ts), and is never walked
 // *through*. A room spanning floors (stairs, an elevator) links its floors; an
 // elevator (`lift`) carries people but not air.
+//
+// A bulkhead splits its segment in two (#569): the piece from its first end up
+// to the bulkhead, and the rest, joined for people but not for air. A room
+// along the segment opens onto the piece its door is on (each door counts on
+// its own side), so where the bulkhead stands decides which rooms it seals off
+// from which end.
 //
 // Distances are metres: moving from one node to the next costs half of each
 // one's length (a corridor segment's own length, a room's by its size), so a
@@ -40,7 +46,7 @@ interface Node {
   length: number;
   /** Can a route pass through it (not a private room)? */
   through: boolean;
-  /** Sealed: people pass, air doesn't (a corridor segment with a bulkhead). */
+  /** Sealed: people pass, air doesn't (a lift; a bulkhead splits its segment instead, #569). */
   airtight?: boolean;
 }
 
@@ -58,6 +64,14 @@ export interface Paths {
   byRoom: Map<number, string[]>;
   /** The walkable pieces along each border: what a room on one side of it opens onto. */
   byEdge: Map<string, string[]>;
+  /** Corridor segments a bulkhead splits: how far along it stands, and the two pieces' nodes and ends (vertex keys), first end first. */
+  splits: Map<string, Split>;
+}
+
+interface Split {
+  at: number;
+  keys: [string, string];
+  ends: [string, string];
 }
 
 const built = (r: RoomInstance) => !r.planned && !r.building;
@@ -71,6 +85,7 @@ export function buildPaths(layout: Layout): Paths {
   const byRoom = new Map<number, string[]>();
   const byVertex = new Map<string, string[]>();
   const byEdge = new Map<string, string[]>();
+  const splits = new Map<string, Split>();
   const add = (key: string, node: Node) => {
     nodes.set(key, node);
     links.set(key, []);
@@ -90,9 +105,25 @@ export function buildPaths(layout: Layout): Paths {
     const e = edgeById(hole, id);
     if (!e || e.floor > hole.floors) continue;
     const key = `c:${id}`;
-    add(key, { roomId: 0, floor: e.floor, length: edgeLengthM(hole, e), through: true, airtight: hasBulkhead(layout, id) });
-    for (const v of edgeVertices(hole, e)) index(byVertex, v, key);
-    index(byEdge, id, key);
+    const length = edgeLengthM(hole, e);
+    const ends = edgeVertices(hole, e);
+    const at = bulkheadAt(layout, id);
+    if (at === null) {
+      add(key, { roomId: 0, floor: e.floor, length, through: true });
+      for (const v of ends) index(byVertex, v, key);
+      index(byEdge, id, key);
+      continue;
+    }
+    // Split at the bulkhead: people pass from one piece to the other, air doesn't.
+    const keys: [string, string] = [key, `${key}~`];
+    add(keys[0], { roomId: 0, floor: e.floor, length: length * at, through: true });
+    add(keys[1], { roomId: 0, floor: e.floor, length: length * (1 - at), through: true });
+    link(keys[0], keys[1], false);
+    keys.forEach((k, i) => {
+      index(byVertex, ends[i]!, k);
+      index(byEdge, id, k);
+    });
+    splits.set(id, { at, keys, ends });
   }
   // Under the dome, every floor's gallery is open walkway, as if tubes ran all the way round.
   if (layout.domed) {
@@ -144,11 +175,37 @@ export function buildPaths(layout: Layout): Paths {
   // Walkable pieces sharing a corner join up.
   for (const list of byVertex.values()) for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) link(list[i]!, list[j]!);
   // A private room opens onto whatever walkable piece runs along one of its sides, and any corridor that ends against its wall.
-  for (const p of privates) {
-    for (const e of outsideEdges(hole, p.cells)) for (const other of byEdge.get(e.id) ?? []) link(p.key, other);
-    for (const d of deadEnds(layout, p.cells)) if (nodes.has(`c:${d.corridor}`)) link(p.key, `c:${d.corridor}`);
+  const paths = { nodes, links, byRoom, byEdge, splits };
+  for (const p of privates) for (const k of openings(layout, paths, p.cells)) link(p.key, k);
+  return paths;
+}
+
+/**
+ * The walkable pieces a private room on these cells (one floor's) opens onto: along its sides, and
+ * where corridors end against its walls. Along a segment a bulkhead splits, only the piece its
+ * door would be on (#569).
+ */
+function openings(layout: Layout, paths: Paths, cells: Cell[]): string[] {
+  const out: string[] = [];
+  for (const e of outsideEdges(layout.hole, cells)) {
+    const split = paths.splits.get(e.id);
+    const away = split ? split.keys[doorSide(layout, cells, e, split.at) === 0 ? 1 : 0] : null;
+    for (const k of paths.byEdge.get(e.id) ?? []) if (k !== away) out.push(k);
   }
-  return { nodes, links, byRoom, byEdge };
+  for (const d of deadEnds(layout, cells)) {
+    const split = paths.splits.get(d.corridor);
+    const k = split ? split.keys[split.ends[1] === d.vertex ? 1 : 0] : `c:${d.corridor}`;
+    if (paths.nodes.has(k)) out.push(k);
+  }
+  return out;
+}
+
+/** Which side of a bulkhead `at` along this border a door in it would be: 0 toward its first end, 1 the other. */
+function doorSide(layout: Layout, cells: Cell[], e: Edge, at: number): 0 | 1 {
+  const own = cells.filter((c) => c.floor === e.floor);
+  const spot = doorAlong(layout, own, e);
+  const along = spot === null ? 0.5 : alongEdgeAt(layout.hole, e, spot);
+  return along < at ? 0 : 1;
 }
 
 const cache = new WeakMap<Layout, { version: number; paths: Paths }>();
@@ -183,8 +240,7 @@ export function distancesFromCells(layout: Layout, cells: Cell[], mode: PathMode
   const half = roomLength(cells.length) / 2;
   const seeds: [string, number][] = [];
   const seed = (k: string) => seeds.push([k, half + paths.nodes.get(k)!.length / 2]);
-  for (const e of outsideEdges(layout.hole, cells)) for (const k of paths.byEdge.get(e.id) ?? []) seed(k);
-  for (const d of deadEnds(layout, cells)) if (paths.nodes.has(`c:${d.corridor}`)) seed(`c:${d.corridor}`);
+  for (const floor of new Set(cells.map((c) => c.floor))) for (const k of new Set(openings(layout, paths, cells.filter((c) => c.floor === floor)))) seed(k);
   return walkOut(paths, seeds, -1, mode, maxM);
 }
 
@@ -202,7 +258,7 @@ interface Compiled {
   start: Int32Array;
   to: Int32Array;
   cost: Float64Array;
-  /** The link carries air: an air link into a node without a bulkhead. */
+  /** The link carries air: an air link into a node that lets air in (not a lift). */
   air: Uint8Array;
 }
 

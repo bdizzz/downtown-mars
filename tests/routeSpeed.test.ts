@@ -26,7 +26,7 @@ function syntheticHole(people: number, seed: number): { paths: Paths; works: num
   const corridors = Math.max(12, Math.round(rooms * 1.5));
   const floors = Math.max(1, Math.round(Math.sqrt(corridors / 30)));
   const perFloor = Math.ceil(corridors / floors);
-  const paths: Paths = { nodes: new Map(), links: new Map(), byRoom: new Map(), byEdge: new Map() };
+  const paths: Paths = { nodes: new Map(), links: new Map(), byRoom: new Map(), byEdge: new Map(), splits: new Map() };
   const link = (a: string, b: string) => {
     for (const [x, y] of [
       [a, b],

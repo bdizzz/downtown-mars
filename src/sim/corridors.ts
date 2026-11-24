@@ -38,8 +38,8 @@ export const corridors = raw as unknown as {
   gallery: FinishDef;
   /** A private room's doorway: its width, how far its opening keeps from the room's corners, and its frame. */
   door: { widthM: number; cornerClearM: number; frameM: number };
-  /** A sealed door fitted across a built corridor segment. */
-  bulkhead: { name: string; hint: string; cost: Record<string, number> };
+  /** A sealed door fitted across a built corridor segment, at a quarter or three quarters along it (#569). */
+  bulkhead: { name: string; hint: string; at: Record<BulkheadHalf, number>; cost: Record<string, number> };
   finishes: FinishDef[];
 };
 
@@ -248,19 +248,43 @@ function computeAccess(layout: Layout): { linked: Record<string, boolean>; conne
   return { linked, connected, floors };
 }
 
+/**
+ * Which half of its segment a bulkhead is in (#569): `a` the half from the segment's first end
+ * (edgeVertices' first: a spoke's inner end, an arc's start), `b` the other. It stands in that
+ * half's middle: a quarter or three quarters along (`corridors.bulkhead.at`).
+ */
+export type BulkheadHalf = "a" | "b";
+
 /** Is there a bulkhead on this corridor segment (and the corridor still there)? */
 export function hasBulkhead(layout: Layout, edgeId: string): boolean {
   return !!layout.bulkheads?.[edgeId] && !!layout.corridors?.[edgeId];
 }
 
-/** Why a bulkhead can't be fitted on this border (or, with `on` false, taken out), or null. */
-export function bulkheadRefusal(layout: Layout, edgeId: string, on = true): string | null {
+/** Which half of its segment this corridor's bulkhead is in, or null if it has none. */
+export function bulkheadHalf(layout: Layout, edgeId: string): BulkheadHalf | null {
+  return hasBulkhead(layout, edgeId) ? layout.bulkheads![edgeId]! : null;
+}
+
+/** How far along its segment (0 at its first end, 1 at its last) this corridor's bulkhead stands, or null. */
+export function bulkheadAt(layout: Layout, edgeId: string): number | null {
+  const half = bulkheadHalf(layout, edgeId);
+  return half ? corridors.bulkhead.at[half] : null;
+}
+
+/** The half of a segment a point this far along it (0 to 1) is in. */
+export const halfAt = (along: number): BulkheadHalf => (along < 0.5 ? "a" : "b");
+
+/**
+ * Why a bulkhead can't be fitted on this border, in this half (or, with `on` false, taken out), or null.
+ * One that's there already can be moved to the other half.
+ */
+export function bulkheadRefusal(layout: Layout, edgeId: string, on = true, half: BulkheadHalf = "a"): string | null {
   if (!on) return hasBulkhead(layout, edgeId) ? null : "No bulkhead here";
   const e = edgeById(layout.hole, edgeId);
   if (!e || !layout.corridors?.[edgeId]) return "A bulkhead goes across a corridor: there's none here";
   if (isGalleryEdge(e)) return "Gallery tubes run open along the shaft: no bulkhead in one";
   if (layout.corridorsBuilding?.[edgeId] !== undefined) return "Not built yet";
-  if (hasBulkhead(layout, edgeId)) return "Already has a bulkhead";
+  if (bulkheadHalf(layout, edgeId) === half) return "Already has a bulkhead";
   return null;
 }
 

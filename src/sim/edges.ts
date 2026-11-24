@@ -223,6 +223,24 @@ export function nearestEdgeAt(hole: Hole, floor: number, rings: number, turn: nu
   return edge ? { edge, m: options[0]![0] } : null;
 }
 
+/**
+ * How far along an edge a point is, 0 at its first end (edgeVertices' first: a spoke's inner end, an
+ * arc's start) to 1 at its last, clamped. `rings` and `turn` as for nearestEdge.
+ */
+export function alongEdge(e: Edge, rings: number, turn: number): number {
+  if (e.kind === "radial") return Math.max(0, Math.min(1, rings - (e.ring - 1)));
+  // Round the turn the short way from the arc's start, so a point just before it reads as 0, not 1.
+  const t = (((((turn - e.a0) % 1) + 1.5) % 1) - 0.5) / (e.a1 - e.a0);
+  return Math.max(0, Math.min(1, t));
+}
+
+/** As alongEdge, for a spot on the edge as deadEnds.ts gives one: a turn on an arc, a radius (metres) on a spoke. */
+export function alongEdgeAt(hole: Hole, e: Edge, at: number): number {
+  if (e.kind === "arc") return alongEdge(e, 0, at);
+  const r0 = circleRadius(hole, e.ring - 1);
+  return Math.max(0, Math.min(1, (at - r0) / (circleRadius(hole, e.ring) - r0)));
+}
+
 /** The arc piece of a circle at an angle. */
 export function arcAt(hole: Hole, floor: number, circle: number, turn: number): ArcEdge | null {
   if (circle < 0 || circle > hole.ringSlots.length) return null;

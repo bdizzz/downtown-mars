@@ -7,6 +7,8 @@ import { computeEffects, effectOnRoom } from "../src/sim/effects";
 import { ensureFloors, type Location } from "../src/sim/placement";
 import { stepsBetween } from "../src/sim/paths";
 import { createInitialState, type SimState } from "../src/sim/state";
+import { createWorld } from "../src/sim/world";
+import { deserialize, SAVE_VERSION, serialize } from "../src/sim/save";
 
 // Milestone 12: bulkheads, sealed doors across corridors. People pass; air and smell don't.
 
@@ -81,5 +83,60 @@ describe("bulkheads", () => {
     expect(applyCommand(s, { type: "removeCorridors", edges: ["R1.2.4"] }).ok).toBe(true);
     finish(s);
     expect(s.layout.bulkheads?.["R1.2.4"]).toBeUndefined();
+  });
+
+  // #569: a bulkhead stands a quarter or three quarters along its segment, and seals each door on its own side.
+  describe("in one half of the segment", () => {
+    /** Floor 2: a brickworks and a dorm along the back of ring 1, the corridor ending behind the dorm's first slot. */
+    function line() {
+      const s = createInitialState(config);
+      s.drill.active = false;
+      s.layout.hole.floors = 2;
+      ensureFloors(s.layout);
+      s.unlocks = ["brickworks"];
+      Object.assign(s.resources, { rock: 900, brick: 300, metal: 300, machinery: 60 });
+      const works = build(s, "brickworks", ring(2, 1, 2, 2));
+      const dorm = build(s, "bunk_dorm", ring(2, 1, 6, 2));
+      const arcs = (slot: number) =>
+        cellEdges(s.layout.hole, { floor: 2, ring: 1, slot })
+          .filter((e) => e.kind === "arc" && e.circle === 1)
+          .sort((a, b) => (a.kind === "arc" && b.kind === "arc" ? a.a0 - b.a0 : 0))
+          .map((e) => e.id);
+      const back = [3, 4, 5, 6].flatMap(arcs);
+      expect(applyCommand(s, { type: "drawCorridors", edges: back, finish: "rock" }).ok).toBe(true);
+      finish(s);
+      // The dorm's first border along the corridor: its door's in the middle, the works off its first end.
+      return { s, works, dorm, seal: arcs(6)[0]! };
+    }
+
+    it("seals a door only from the far side of it", () => {
+      const { s, works, dorm, seal } = line();
+      // Three quarters along, past the dorm's door: the door's still on the works' side.
+      expect(applyCommand(s, { type: "setBulkhead", edges: [seal], on: true, half: "b" }).ok).toBe(true);
+      expect(s.layout.bulkheads?.[seal]).toBe("b");
+      expect(stepsBetween(s.layout, dorm, works, "air")).not.toBeNull();
+      // A quarter along, between the works and the door: sealed off.
+      expect(applyCommand(s, { type: "setBulkhead", edges: [seal], on: true, half: "a" }).ok).toBe(true);
+      expect(stepsBetween(s.layout, dorm, works, "air")).toBeNull();
+      expect(stepsBetween(s.layout, dorm, works, "walk")).not.toBeNull();
+    });
+
+    it("moves to the other half free, and not onto itself", () => {
+      const { s, seal } = line();
+      expect(applyCommand(s, { type: "setBulkhead", edges: [seal], on: true, half: "a" }).ok).toBe(true);
+      const metal = s.resources.metal!;
+      expect(applyCommand(s, { type: "setBulkhead", edges: [seal], on: true, half: "a" })).toMatchObject({ ok: false, reason: expect.stringMatching(/Already/) });
+      expect(applyCommand(s, { type: "setBulkhead", edges: [seal], on: true, half: "b" }).ok).toBe(true);
+      expect(s.resources.metal!).toBe(metal);
+    });
+
+    it("old saves' bulkheads go a quarter along", () => {
+      const w = createWorld(config);
+      // As a v28 save kept one: just `true`.
+      (w.holes[0]!.layout as { bulkheads?: unknown }).bulkheads = { "R1.2.4": true };
+      const json = serialize(w).replace(`"version":${SAVE_VERSION}`, '"version":28');
+      const loaded = deserialize(json);
+      expect(loaded.ok && loaded.world.holes[0]!.layout.bulkheads).toEqual({ "R1.2.4": "a" });
+    });
   });
 });

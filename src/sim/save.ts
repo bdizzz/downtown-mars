@@ -25,7 +25,7 @@ import type { World } from "./world";
 // effect field). Bump the version whenever the shape changes, and add a
 // migration from the previous version so old saves keep working.
 
-export const SAVE_VERSION = 28;
+export const SAVE_VERSION = 29;
 
 type Raw = Record<string, unknown>;
 
@@ -310,6 +310,16 @@ const MIGRATIONS: Record<number, (s: Raw) => Raw> = {
         if (path.length) recomputeAccess(layout);
       }
       return { ...h, layout };
+    }),
+  }),
+  // v29: a bulkhead stands a quarter or three quarters along its segment, not in the middle (#569).
+  // Those already fitted go a quarter along.
+  28: (s) => ({
+    ...s,
+    holes: (s.holes as Raw[]).map((h) => {
+      const layout = h.layout as { bulkheads?: Record<string, unknown> };
+      if (layout.bulkheads) for (const id of Object.keys(layout.bulkheads)) if (layout.bulkheads[id] !== "a" && layout.bulkheads[id] !== "b") layout.bulkheads[id] = "a";
+      return h;
     }),
   }),
 };
