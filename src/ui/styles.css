@@ -138,6 +138,7 @@ kbd { border: 1px solid var(--muted); border-radius: 3px; padding: 0 3px; font-s
 .visit { border: 1px solid #000; background: #22130f; border-radius: 6px; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
 .visit .who { display: flex; gap: 8px; align-items: center; }
 .visit .title { font-weight: 600; color: var(--accent); }
+.visit .aside { font-size: 0.85em; margin-top: -2px; }
 .face {
   width: 34px; height: 34px; border-radius: 50%; background: #5b3a2e; color: var(--text);
   display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; flex-shrink: 0;
