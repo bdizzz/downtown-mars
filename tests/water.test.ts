@@ -8,6 +8,7 @@ import type { Location } from "../src/sim/placement";
 import { roomName } from "../src/sim/roomName";
 import { roomDef } from "../src/sim/rooms";
 import { createInitialState, type SimState } from "../src/sim/state";
+import { addPeopleAt } from "../src/sim/people";
 import { step } from "../src/sim/step";
 
 // Water as a closed loop (T-005): clean water used turns gray, the recycler
@@ -150,7 +151,8 @@ describe("the closed loop milestone (T-060)", () => {
 
   it("a hole with a recycler keeping up closes its loop; without one it doesn't", () => {
     const s = hole();
-    s.resources.water = 200;
+    addPeopleAt(s, "adult", loop.at! - s.population.count, config);
+    s.resources.water = 2000;
     days(s, 1);
     expect(passed(s, loop)).toBe(false);
     build(s, "water_recycler", ring(1, 2, 3, 3));

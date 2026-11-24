@@ -115,8 +115,9 @@ describe("milestones", () => {
 // T-060: a closed water loop, from the last whole month's ledger.
 describe("a closed water loop", () => {
   const loop = milestoneData.milestones.find((m) => m.id === "closed_loop")!;
-  const month = (water: FlowEntry, grayWater: FlowEntry): SimState => {
+  const month = (water: FlowEntry, grayWater: FlowEntry, people = 30): SimState => {
     const s = hole();
+    addPeopleAt(s, "adult", people - s.population.count, config);
     s.ledger.days = [{ water, grayWater }];
     return s;
   };
@@ -142,6 +143,21 @@ describe("a closed water loop", () => {
     const untreated = month({ in: { [LABELS.earth]: 500 }, out: { [LABELS.household]: 20 } }, { in: { [LABELS.household]: 20 }, out: {} });
     expect(passed(untreated, loop)).toBe(false);
     expect(passed(hole(), loop)).toBe(false);
+  });
+
+  it("needs 30 people first: a tiny crew and the landing kit's recycler close it by themselves (#441)", () => {
+    const water: FlowEntry = { in: { "Water recycler": 78 }, out: { [LABELS.household]: 20 } };
+    const gray: FlowEntry = { in: { [LABELS.household]: 20 }, out: { "Water recycler": 80 } };
+    expect(passed(month(water, gray, 29), loop)).toBe(false);
+    expect(passed(month(water, gray, 30), loop)).toBe(true);
+  });
+
+  it("isn't given away in a new game on the full landing kit (#441)", () => {
+    const s = createInitialState(config, undefined, "full");
+    s.drill.active = false;
+    for (let i = 0; i < 3 * day; i++) step(s, config);
+    expect(s.population.count).toBeLessThan(30);
+    expect(hasReached(s, "closed_loop")).toBe(false);
   });
 
   it("water moved in and out (rovers, a seed kit) isn't the loop leaking", () => {
