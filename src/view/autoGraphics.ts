@@ -62,7 +62,7 @@ function quantile(xs: readonly number[], q: number): number {
 /** What to do now, if anything. */
 export function decideAutoGraphics(i: AutoInput): AutoAction | null {
   if (i.preset === "custom") return null;
-  const fresh = i.history.slice(-Math.min(i.fresh, i.history.length));
+  const fresh = i.history.slice(i.history.length - Math.min(Math.max(0, i.fresh), i.history.length));
   const cap = displayCap(i.history);
   if (i.watching) {
     if (fresh.length >= SECONDS && quantile(fresh.slice(-SECONDS), 0.5) < AUTO.fallBack * cap) return { kind: "back", to: i.watching };
