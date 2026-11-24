@@ -30,6 +30,8 @@ export interface OfficeMessage {
     about: string;
     title: string;
     text: string;
+    /** The numbers and the fix, small under the text ("" if none). */
+    aside: string;
     leaves: string;
     /** Show me for a visit about a diagnosis cause ("health:meals"), as the "Why?" panel's. */
     cause: string | null;
@@ -55,6 +57,7 @@ export function office(state: SimState, snap: Snapshot): OfficeMessage {
         about: n ? `${n.role} · ${n.traits.join(", ")} · loyalty ${n.loyalty}` : "",
         title: v.title,
         text: v.text,
+        aside: v.aside ?? "",
         leaves: v.leavesTick !== undefined ? `Leaves in ${days(v.leavesTick - state.tick)}` : "",
         cause: v.cause ?? null,
         spot: v.cause ? withFloor(snap, causeSpot(snap, v.cause)) : null,
