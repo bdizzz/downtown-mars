@@ -4,6 +4,7 @@ import type React from "react";
 import type { HoverInfo, Tool } from "../view/types";
 import type { SimCommand } from "../sim/commands";
 import { roomDef, roomDefs } from "../sim/rooms";
+import { floorFor, floorWant } from "./buildFloor";
 import { BARE_ROCK, BuildRail, buildTool, ToolBar } from "./BuildPalette";
 import { CORRIDOR_KEY, DEMOLISH_KEY, HOTKEYS, shapesFor } from "../view/buildCatalog";
 import { ChartsStrip, Dock, MODE_KEYS, OFFICE_KEY, ViewStrip, type Chart, type Mode } from "./Dock";
@@ -342,12 +343,42 @@ export function App() {
     }
   }, [send, flash]);
 
-  // Free view with every floor showing looks at the surface; picking up something to build
-  // underground (a room below ground, or corridors) drops the view to floor 1.
+  // The view follows the room in hand (#597): a surface room takes an underground view up to the
+  // surface, an underground room (or corridors) takes the surface down to the last floor viewed, and
+  // leaving Build goes back to where the player was before the tool moved them. Picking a floor by
+  // hand while building wins: nothing moves back. 2D shows every floor at once, so it never moves.
+  /** The last underground floor viewed. */
+  const lastBelow = useRef<number | null>(null);
+  /** Where the build tool moved the view from, and to; null once the player picks a floor themselves. */
+  const buildMoved = useRef<{ from: number | null; to: number | null } | null>(null);
+  const viewFloorNow = useRef(viewFloor);
+  viewFloorNow.current = viewFloor;
   useEffect(() => {
-    const below = tool?.kind === "corridor" || (tool?.kind === "build" && roomDef(tool.room).size !== "surface");
-    if (below && viewFloor === null && settings.view === "3d" && settings.view3d.camera === "iso") setViewFloor(1);
-  }, [tool, viewFloor, settings.view, settings.view3d.camera]);
+    if (viewFloor !== null) lastBelow.current = viewFloor;
+    if (buildMoved.current && viewFloor !== buildMoved.current.to) buildMoved.current = null;
+  }, [viewFloor]);
+  // Keyed on what's in hand, not the tool itself, so turning a room doesn't move the view again.
+  const toolKey = tool?.kind === "build" ? `build:${tool.room}` : (tool?.kind ?? null);
+  useEffect(() => {
+    if (settings.view === "2d" || walking) return;
+    const from = viewFloorNow.current;
+    const to = floorFor(floorWant(tool), from, lastBelow.current, settings.view === "plan");
+    if (to === undefined) return;
+    buildMoved.current = { from: buildMoved.current ? buildMoved.current.from : from, to };
+    setViewFloor(to);
+    // Only picking something else up moves the view.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [toolKey]);
+  useEffect(() => {
+    if (mode === "build") return;
+    const moved = buildMoved.current;
+    buildMoved.current = null;
+    if (!moved || walking) return;
+    setViewFloor(moved.from);
+    // Build closed because the office opened: the office puts back the floor as the player had it.
+    if (beforeOffice.current) beforeOffice.current.floor = moved.from;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
 
   // The lining rooms are built in (T-038): bare rock each time Build opens, then kept while placing room after room.
   /** A build group's number key, for the rail (1–7). */
