@@ -98,6 +98,16 @@ function kit(g: THREE.Group, material: MaterialCache, color: number) {
     add,
     strut,
     v,
+    material,
+    color,
+    /** A group inside this one at (x, y, z), turned `yaw` about y, for a part built in its own local space (`kit(child, material, color)`). */
+    child(x: number, y: number, z: number, yaw = 0): THREE.Group {
+      const c = new THREE.Group();
+      c.position.set(x, y, z);
+      c.rotation.y = yaw;
+      g.add(c);
+      return c;
+    },
     /** A bevelled slab of concrete on the ground, its top at `h`, centred on (x, z). */
     plinth(w: number, d: number, x = 0, z = 0, h = KIT.plinthH) {
       add(bevelBox(w, h + 0.3, d, KIT.plinthBevel), m.concrete, x, (h - 0.3) / 2, z);
@@ -351,9 +361,9 @@ function solarArray({ m, add, plinth, lamp }: Kit): void {
 
 /**
  * The rover depot: a concrete garage with a ribbed roller door in an orange steel frame, an apron out
- * front, and two rovers parked on it (orange chassis, white cabins, dark wheels).
+ * front, and two crewed rovers parked on it (`rover`).
  */
-function roverDepot({ m, add, plinth, block, lamp, vent, beacon, railing }: Kit): void {
+function roverDepot({ m, add, plinth, block, lamp, vent, beacon, railing, child, material, color }: Kit): void {
   // The garage stands at the shaft's end, its door facing out (+x) onto the apron.
   const gx = -3.5;
   const top = plinth(18, 13);
@@ -368,19 +378,112 @@ function roverDepot({ m, add, plinth, block, lamp, vent, beacon, railing }: Kit)
   vent(gx - 1, roof, -2.5);
   beacon(gx + 2, roof, 3.5);
   railing([[gx - 3.05, -5.05], [gx + 3.05, -5.05], [gx + 3.05, 5.05], [gx - 3.05, 5.05]], roof);
-  // Two rovers on the apron, side by side.
-  for (const dz of [-2.4, 2.4]) {
-    const x = 4.2;
-    add(new THREE.BoxGeometry(3.4, 0.5, 2.1), m.steel, x, top + 0.75, dz);
-    add(bevelBox(2.1, 1.0, 1.9, 0.12), m.hull, x - 0.4, top + 1.5, dz);
-    const glass = add(new THREE.BoxGeometry(0.05, 0.5, 1.6), m.port, x + 0.66, top + 1.65, dz);
-    glass.rotation.z = -0.25;
-    add(new THREE.BoxGeometry(2.14, 0.15, 1.94), m.band, x - 0.4, top + 1.15, dz);
-    for (const [wx, wz] of [[-1.1, -1.05], [1.1, -1.05], [-1.1, 1.05], [1.1, 1.05]] as const) {
-      const wheel = add(new THREE.CylinderGeometry(0.45, 0.45, 0.35, 14), m.dark, x + wx, top + 0.45, dz + wz);
-      wheel.rotation.x = Math.PI / 2;
+  // Two rovers on the apron, side by side, noses out; the second parked a little askew.
+  for (const [dz, yaw] of [[-2.7, 0.04], [2.7, -0.1]] as const) rover(kit(child(4.6, top, dz, yaw), material, color));
+}
+
+/** The crewed rover's sizes (metres): its wheels and where they sit, the pressure hull, and the chassis under it. */
+const ROVER = {
+  wheel: { r: 0.48, w: 0.38, x: [1.75, 0, -1.75] as const, track: 1.25 },
+  hull: { r: 0.82, len: 3.3, x: -0.25, y: 1.75 },
+  chassis: { len: 4.4, h: 0.28, w: 1.7, y: 1.05 },
+};
+
+/**
+ * A crewed, pressurised rover (#584), nose along +x, standing on y = 0: six wheels on rocker-bogie arms
+ * either side, a white pressure hull (a capsule) with a band in the depot's colour, a wraparound windscreen
+ * and portholes, a suitport hatch at the back over a towing hitch, a solar wing and a radiator on the roof,
+ * a mast with a camera head, and a dish and a whip antenna. Built from the kit, so it's in the surface's palette.
+ */
+function rover({ m, add, strut, v, lamp }: Kit): void {
+  const W = ROVER.wheel;
+  const H = ROVER.hull;
+  const C = ROVER.chassis;
+  // The chassis: an orange steel frame under the hull, with a dark skid plate.
+  add(bevelBox(C.len, C.h, C.w, 0.06), m.steel, 0, C.y, 0);
+  add(new THREE.BoxGeometry(C.len - 0.6, 0.08, C.w - 0.3), m.dark, 0, C.y - C.h / 2 - 0.04, 0);
+  // Six wheels, each with a hub, on rocker-bogie arms: the rocker pivots on the chassis and runs to the front
+  // wheel and back to the bogie, which carries the middle and rear wheels.
+  for (const side of [-1, 1]) {
+    const z = side * W.track;
+    for (const wx of W.x) {
+      const tyre = add(new THREE.CylinderGeometry(W.r, W.r, W.w, 14), m.dark, wx, W.r, z);
+      tyre.rotation.x = Math.PI / 2;
+      for (let k = 0; k < 10; k++) {
+        // Treads: little ribs across the tyre.
+        const a = (k / 10) * Math.PI * 2;
+        const tread = add(new THREE.BoxGeometry(0.07, 0.04, W.w - 0.04), m.steelDark, wx + Math.cos(a) * W.r, W.r + Math.sin(a) * W.r, z);
+        tread.rotation.z = a + Math.PI / 2;
+      }
+      const hub = add(new THREE.CylinderGeometry(0.2, 0.2, W.w + 0.06, 10), m.hull, wx, W.r, z);
+      hub.rotation.x = Math.PI / 2;
+    }
+    const armZ = side * (W.track - W.w / 2 - 0.08);
+    const pivot = v(0.35, C.y + 0.05, armZ);
+    const bogie = v(-0.9, W.r + 0.42, armZ);
+    strut(pivot, v(W.x[0], W.r, armZ), 0.07, m.steel);
+    strut(pivot, bogie, 0.07, m.steel);
+    strut(bogie, v(W.x[1], W.r, armZ), 0.06, m.steelDark);
+    strut(bogie, v(W.x[2], W.r, armZ), 0.06, m.steelDark);
+    add(new THREE.CylinderGeometry(0.13, 0.13, 0.14, 10), m.dark, pivot.x, pivot.y, armZ).rotation.x = Math.PI / 2;
+    add(new THREE.CylinderGeometry(0.1, 0.1, 0.12, 10), m.dark, bogie.x, bogie.y, armZ).rotation.x = Math.PI / 2;
+  }
+  // The pressure hull: a white capsule along x, a band in the depot's colour round its waist.
+  const front = H.x + H.len / 2;
+  const back = H.x - H.len / 2;
+  add(new THREE.CylinderGeometry(H.r, H.r, H.len, 14), m.hull, H.x, H.y, 0).rotation.z = Math.PI / 2;
+  const nose = add(new THREE.SphereGeometry(H.r, 14, 8, 0, Math.PI), m.hull, front, H.y, 0);
+  nose.rotation.y = Math.PI / 2;
+  nose.scale.set(1, 1, 0.75);
+  const tail = add(new THREE.SphereGeometry(H.r, 14, 8, 0, Math.PI), m.hull, back, H.y, 0);
+  tail.rotation.y = -Math.PI / 2;
+  tail.scale.set(1, 1, 0.45);
+  add(new THREE.CylinderGeometry(H.r + 0.02, H.r + 0.02, 0.3, 14), m.band, H.x + 0.3, H.y, 0).rotation.z = Math.PI / 2;
+  // A wraparound windscreen over the nose's upper half, and two portholes down each flank.
+  const screen = add(new THREE.SphereGeometry(H.r + 0.015, 14, 6, 0, Math.PI, 0.35, 1.0), m.port, front, H.y, 0);
+  screen.rotation.y = Math.PI / 2;
+  screen.scale.set(1, 1, 0.75);
+  for (const side of [-1, 1]) {
+    for (const px of [H.x + 0.7, H.x - 0.5]) {
+      add(new THREE.CylinderGeometry(0.22, 0.22, 0.06, 12), m.steel, px, H.y + 0.15, side * (H.r - 0.01)).rotation.x = Math.PI / 2;
+      add(new THREE.CylinderGeometry(0.16, 0.16, 0.08, 12), m.port, px, H.y + 0.15, side * (H.r + 0.005)).rotation.x = Math.PI / 2;
     }
   }
+  // Headlamps either side of the nose, under the windscreen.
+  for (const side of [-1, 1]) lamp(front + 0.35, H.y - 0.35, side * 0.5);
+  // The back: a suitport hatch in an orange frame, hazard paint over it, and the towing hitch below.
+  const hatchX = back - H.r * 0.45 - 0.02;
+  add(new THREE.BoxGeometry(0.1, 0.95, 0.85), m.steel, hatchX, H.y, 0);
+  add(new THREE.BoxGeometry(0.12, 0.75, 0.65), m.dark, hatchX - 0.01, H.y, 0);
+  add(new THREE.BoxGeometry(0.08, 0.12, 0.85), m.hazard, hatchX, H.y + 0.56, 0);
+  const hitchX = -C.len / 2;
+  add(new THREE.BoxGeometry(0.5, 0.14, 0.18), m.steel, hitchX - 0.2, C.y - 0.1, 0);
+  add(new THREE.TorusGeometry(0.11, 0.035, 6, 12), m.dark, hitchX - 0.5, C.y - 0.1, 0).rotation.x = Math.PI / 2;
+  // On the roof: a solar wing on two saddles, tilted to the sky, and a ribbed radiator behind it.
+  const roof = H.y + H.r;
+  const wingX = H.x + 0.3;
+  for (const sx of [-0.55, 0.55]) add(new THREE.BoxGeometry(0.16, 0.18, 1.0), m.steelDark, wingX + sx, roof + 0.02, 0);
+  const wing = add(new THREE.BoxGeometry(1.6, 0.06, 2.3), panelMaterial(), wingX, roof + 0.2, 0);
+  wing.rotation.z = -0.12;
+  for (const side of [-1, 1]) add(new THREE.BoxGeometry(1.64, 0.04, 0.06), m.steel, wingX, roof + 0.19, side * 1.16).rotation.z = -0.12;
+  const radX = H.x - 1.0;
+  add(new THREE.BoxGeometry(0.9, 0.1, 1.3), m.hull, radX, roof + 0.0, 0);
+  for (let k = 0; k < 5; k++) add(new THREE.BoxGeometry(0.05, 0.08, 1.2), m.steelDark, radX - 0.36 + k * 0.18, roof + 0.08, 0);
+  // The mast at the front of the roof: a pole up to a camera head with two lenses looking ahead.
+  const mastX = front - 0.35;
+  const mastFoot = roof - 0.12;
+  const mastTop = mastFoot + 1.15;
+  strut(v(mastX, mastFoot, 0.45), v(mastX, mastTop, 0.45), 0.05, m.steel);
+  add(new THREE.CylinderGeometry(0.11, 0.11, 0.1, 10), m.band, mastX, mastFoot + 0.1, 0.45);
+  add(bevelBox(0.3, 0.22, 0.42, 0.04), m.hull, mastX, mastTop + 0.1, 0.45);
+  for (const lz of [0.34, 0.56]) add(new THREE.CylinderGeometry(0.055, 0.055, 0.06, 10), m.port, mastX + 0.16, mastTop + 0.12, lz).rotation.z = Math.PI / 2;
+  // A dish on a short post at the back, over the radiator, tipped back to the sky, and a whip antenna beside it.
+  const dishFoot = v(H.x - 1.3, roof - 0.1, -0.5);
+  strut(dishFoot, v(dishFoot.x, roof + 0.45, dishFoot.z), 0.04, m.steelDark);
+  const dish = add(new THREE.CylinderGeometry(0.32, 0.06, 0.12, 12), m.hull, dishFoot.x - 0.05, roof + 0.55, dishFoot.z);
+  dish.rotation.z = 0.6;
+  strut(v(H.x - 1.3, roof - 0.15, 0.55), v(H.x - 1.3, roof + 1.5, 0.55), 0.015, m.dark);
+  add(new THREE.SphereGeometry(0.05, 6, 4), m.beacon, H.x - 1.3, roof + 1.52, 0.55);
 }
 
 /** The entrance's gatehouse (T-144): its size, and how far into the collar's rim its back is set so it reads as built onto it. */
