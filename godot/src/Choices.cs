@@ -298,6 +298,7 @@ public partial class Choices : Node
             _officeRows.AddChild(Text(v.GetProperty("about").GetString()!, 12, Muted));
             _officeRows.AddChild(Text(v.GetProperty("title").GetString()!, 14, Body));
             _officeRows.AddChild(Text(v.GetProperty("text").GetString()!, 13, Body));
+            if (v.TryGetProperty("aside", out var aside) && aside.GetString() is { Length: > 0 } asideText) _officeRows.AddChild(Text(asideText, 12, Muted));
             _officeRows.AddChild(Text(v.GetProperty("leaves").GetString()!, 12, Muted));
             // A visit about a diagnosis cause (the doctor, the residents' delegate): Show me, as the "Why?" panel's.
             if (v.TryGetProperty("cause", out var cause) && cause.ValueKind == JsonValueKind.String && v.TryGetProperty("spot", out var spotJson) && ShowSpot.Parse(spotJson) is { } spot)
