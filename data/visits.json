@@ -1,6 +1,18 @@
 {
-  "_note": "Citizen visits. Triggers are in src/sim/visits.ts, keyed by id; everything else is here. Placeholders: {name}, {home}, {floor}; for the doctor and the delegate (F-018) also {cause} (the diagnosis cause's text), {what} (its short label), {amount} (what it costs) and {fix}; for the meal visits (#375) {crops}, the edible crops the hole doesn't grow yet. poor_meals and average_meals come when food variety over the last month has been poor, or average with nothing better (data/food.json visits); variety is left to them (skip), and their promise is kept once variety reaches the next rating. concerns: when the doctor (health) and a residents' delegate (happiness) come about a diagnosis cause. A cause counts once it drains health at all, or costs happiness problemPoints or more, and is fixed once it no longer drains health, or costs less than fixedPoints; skip leaves causes to other visits (noise_complaint) or to the doctor (holeHealth). They come once it has held holdDays: the first time about a cause only to tell you (the _note kinds), then, repeatDays after the last visit about it, asking for a promise (the _promise kinds). patienceDays 0: they wait until answered. greeter has no trigger: the tutorial's office step sends for one (the greet command, T-080) when nobody's waiting. grace (#434): no visit comes until afterLandingDays after the hole was founded, and until earlyDays only earlyAtOnce waits at a time. fixRooms (on a visit, or in concerns by cause key): the rooms that fix what it's about; the visit waits until one of them is unlocked in this hole and, in the guided tutorial, its step has shown it (left out: nothing to wait for, as for a corridor or a bulkhead).",
+  "_note": "Citizen visits. Triggers are in src/sim/visits.ts, keyed by id; everything else is here. Placeholders: {name}, {home}, {floor}; for the doctor and the delegate (F-018) also {cause} (the diagnosis cause's text), {what} (its short label), {amount} (what it costs) and {fix}; for the meal visits (#375) {crops}, the edible crops the hole doesn't grow yet. poor_meals and average_meals come when food variety over the last month has been poor, or average with nothing better (data/food.json visits); variety is left to them (skip), and their promise is kept once variety reaches the next rating. concerns: when the doctor (health) and a residents' delegate (happiness) come about a diagnosis cause. A cause counts once it drains health at all, or costs happiness problemPoints or more, and is fixed once it no longer drains health, or costs less than fixedPoints; skip leaves causes to other visits (noise_complaint) or to the doctor (holeHealth). They come once it has held holdDays: the first time about a cause only to tell you (the _note kinds), then, repeatDays after the last visit about it, asking for a promise (the _promise kinds). patienceDays 0: they wait until answered. greeter has no trigger: the tutorial's office step sends for one (the greet command, T-080) when nobody's waiting. grace (#434): no visit comes until afterLandingDays after the hole was founded, and until earlyDays only earlyAtOnce waits at a time. fixRooms (on a visit, or in concerns by cause key): the rooms that fix what it's about; the visit waits until one of them is unlocked in this hole and, in the guided tutorial, its step has shown it (left out: nothing to wait for, as for a corridor or a bulkhead). Voices (#433): a notable speaks in the voice of the first of their traits listed in voices.byTrait (blunt, worried or cheerful), else plainly: a visit's voices hold its text in each voice, falling back to text. {say} is what the doctor or the delegate says about the cause (concerns.say, by cause key; {Say} capitalised), falling back to the cause's own text; the numbers and the fix go in the visit's aside, shown small under what they say.",
   "grace": { "afterLandingDays": 3, "earlyDays": 8, "earlyAtOnce": 1 },
+  "voices": {
+    "byTrait": {
+      "Hothead": "blunt",
+      "Industrialist": "blunt",
+      "Pragmatist": "blunt",
+      "Cautious": "worried",
+      "Idealist": "worried",
+      "Earth Loyalist": "worried",
+      "Charismatic": "cheerful",
+      "Populist": "cheerful"
+    }
+  },
   "concerns": {
     "holdDays": 1,
     "repeatDays": 3,
@@ -27,6 +39,33 @@
       "happiness:crowding": ["bunk_dorm"],
       "happiness:ownComfort": ["studio", "apartment", "flat", "suite"],
       "happiness:airQuality": ["ventilation_hub"]
+    },
+    "say": {
+      "health:water": "people aren't getting all the water they need",
+      "health:meals": "people aren't getting enough to eat",
+      "health:sanitation": "too many people have no restroom to use",
+      "health:o2": "the air's getting thin: there isn't enough oxygen in it",
+      "health:co2": "the CO2 is building up in the air",
+      "happiness:noClinic": "some homes have no clinic anyone could reach in time",
+      "happiness:elderCare": "our elders have nobody looking after them",
+      "happiness:ordinanceHealth": "the ordinances are wearing people down",
+      "happiness:ordinanceComfort": "the ordinances are wearing people down",
+      "happiness:schooling": "the children have no school to go to",
+      "happiness:grief": "we've lost people, and there's nowhere to lay them to rest",
+      "happiness:sharedWear": "the shared rooms are falling apart, and nobody's keeping them up",
+      "happiness:noSeat": "some people can't find a seat at a galley",
+      "happiness:noRestroom": "some homes have no restroom anywhere near",
+      "happiness:temperature": "some homes are freezing, or stifling",
+      "happiness:homeless": "some of us have nowhere to sleep",
+      "happiness:ownComfort": "the homes are cramped: a bunk dorm is no place to live for long",
+      "happiness:homeWear": "the homes are worn out and grubby",
+      "happiness:neighbourComfort": "some homes sit right up against the noise and grime of industry",
+      "happiness:neighbourHealth": "some homes are next to rooms that make people ill",
+      "happiness:smell": "there's a smell getting into the homes",
+      "happiness:airQuality": "the air in some homes is stale",
+      "happiness:crowding": "the homes are packed, too many people to a room",
+      "happiness:commute": "people are walking half the hole to get to work",
+      "happiness:foodWalk": "it's a long walk to a galley from some homes"
     }
   },
   "checkEveryTicks": 10,
@@ -36,6 +75,11 @@
       "id": "noise_complaint",
       "title": "Noise complaint",
       "text": "{name} is here about the {home} on floor {floor}. \"Nobody in our block has slept properly for months. Something has to give.\"",
+      "voices": {
+        "blunt": "{name} is here about the {home} on floor {floor}, and gets straight to it. \"It's too loud to sleep down there. Something has to give.\"",
+        "worried": "{name} is here about the {home} on floor {floor}. \"The children can't sleep, and neither can we. I'm afraid someone's going to snap.\"",
+        "cheerful": "{name} is here about the {home} on floor {floor}, yawning. \"We've learned to sleep through a lot down here, but not this. Any chance of a little quiet?\""
+      },
       "cooldownDays": 3,
       "patienceDays": 2,
       "ignored": { "loyalty": -10, "homeHappiness": -5, "message": "{name} gave up waiting and went home, where it's still too loud to nap. The {home} is grumbling." },
@@ -61,13 +105,7 @@
           "homeHappiness": 5,
           "message": "Quiet hours are in force."
         },
-        {
-          "id": "refuse",
-          "label": "Refuse",
-          "hint": "\"That noise is the sound of air.\"",
-          "loyalty": -10,
-          "homeHappiness": -5
-        }
+        { "id": "refuse", "label": "Refuse", "hint": "\"That noise is the sound of air.\"", "loyalty": -10, "homeHappiness": -5 }
       ]
     },
     {
@@ -75,6 +113,11 @@
       "fixRooms": ["clinic"],
       "title": "Room demand: a clinic",
       "text": "{name} speaks for the colonists: \"Someone is going to get hurt down here, and there's nowhere to go. We need a clinic.\"",
+      "voices": {
+        "blunt": "{name} speaks for the colonists. \"Someone's going to get hurt down here, and there's nowhere to take them. Build a clinic.\"",
+        "worried": "{name} speaks for the colonists. \"Every time someone slips on a ladder I hold my breath. If anyone gets badly hurt, there's nowhere to go. We need a clinic.\"",
+        "cheerful": "{name} speaks for the colonists. \"We've been lucky so far, and I'd love it to stay that way. A clinic would put everyone's mind at rest.\""
+      },
       "minDay": 4,
       "cooldownDays": 4,
       "patienceDays": 2,
@@ -92,30 +135,34 @@
             "broken": { "loyalty": -15, "allHappiness": -5, "message": "Still no clinic. {name} is telling everyone you broke your word, and handing out bandages." }
           }
         },
-        {
-          "id": "refuse",
-          "label": "Not yet: there are bigger priorities",
-          "hint": "Loyalty and happiness drop a little.",
-          "loyalty": -10,
-          "allHappiness": -3
-        }
+        { "id": "refuse", "label": "Not yet: there are bigger priorities", "hint": "Loyalty and happiness drop a little.", "loyalty": -10, "allHappiness": -3 }
       ]
     },
     {
       "id": "doctor_note",
       "title": "The doctor's report",
-      "text": "{name} has been keeping an eye on everyone's health. \"{cause}. It's costing us {amount}. {fix}\"",
+      "text": "{name} has been keeping an eye on everyone's health. \"{Say}. I thought you should know.\"",
+      "voices": {
+        "blunt": "{name} doesn't bother sitting down. \"{Say}. It's making people ill, and it won't sort itself out.\"",
+        "worried": "{name} hovers in the doorway. \"I don't want to alarm anyone, but {say}. I've been losing sleep over it.\"",
+        "cheerful": "{name} drops in, the smile slipping a little. \"Nothing dramatic, but {say}. Worth a look when you can.\""
+      },
+      "aside": "{cause} · {amount}. {fix}",
       "cooldownDays": 1,
       "patienceDays": 2,
       "ignored": {},
-      "choices": [
-        { "id": "noted", "label": "Noted, thank you", "hint": "Nothing more for now. If it lasts, they'll be back to ask you to fix it.", "loyalty": 2 }
-      ]
+      "choices": [{ "id": "noted", "label": "Noted, thank you", "hint": "Nothing more for now. If it lasts, they'll be back to ask you to fix it.", "loyalty": 2 }]
     },
     {
       "id": "doctor_promise",
       "title": "The doctor wants it fixed",
-      "text": "{name} is back. \"{cause}, still. It's costing us {amount}. {fix} Can you sort it out?\"",
+      "text": "{name} is back. \"{Say}, still. Can you sort it out?\"",
+      "voices": {
+        "blunt": "{name} is back, and not pleased. \"{Say}. Still. I told you last time. Will you fix it or not?\"",
+        "worried": "{name} is back, looking tired. \"It's no better: {say}. Please, can something be done?\"",
+        "cheerful": "{name} is back, trying to keep it light. \"So: {say}, still. Shall we fix it together?\""
+      },
+      "aside": "{cause} · {amount}. {fix}",
       "cooldownDays": 1,
       "patienceDays": 2,
       "ignored": { "loyalty": -10, "allHappiness": -3, "message": "{name} gave up waiting. Word is the doctor's worried and you weren't listening." },
@@ -138,18 +185,28 @@
     {
       "id": "delegate_note",
       "title": "A word from the residents",
-      "text": "{name} speaks for the residents. \"{cause}. It's costing us {amount}. {fix}\"",
+      "text": "{name} speaks for the residents. \"{Say}. People wanted you to hear it from us.\"",
+      "voices": {
+        "blunt": "{name} speaks for the residents, and doesn't soften it. \"{Say}. People are fed up.\"",
+        "worried": "{name} speaks for the residents, quietly. \"People are anxious: {say}. I said I'd let you know.\"",
+        "cheerful": "{name} brings word from the residents. \"Everyone's mostly fine, honestly, but {say}. Thought you'd want to know.\""
+      },
+      "aside": "{cause} · {amount}. {fix}",
       "cooldownDays": 1,
       "patienceDays": 2,
       "ignored": {},
-      "choices": [
-        { "id": "noted", "label": "Noted, thank you", "hint": "Nothing more for now. If it lasts, they'll be back to ask you to fix it.", "loyalty": 2 }
-      ]
+      "choices": [{ "id": "noted", "label": "Noted, thank you", "hint": "Nothing more for now. If it lasts, they'll be back to ask you to fix it.", "loyalty": 2 }]
     },
     {
       "id": "delegate_promise",
       "title": "The residents want it fixed",
-      "text": "{name} is back for the residents. \"{cause}, still. It's costing us {amount}. {fix} Will you do something about it?\"",
+      "text": "{name} is back for the residents. \"{Say}, still. Will you do something about it?\"",
+      "voices": {
+        "blunt": "{name} is back for the residents, arms folded. \"{Say}. Still. They want an answer this time.\"",
+        "worried": "{name} is back for the residents. \"It hasn't changed: {say}. People are starting to lose heart.\"",
+        "cheerful": "{name} is back for the residents, still smiling, just. \"{Say}, still. Make my day and tell me it's on the list?\""
+      },
+      "aside": "{cause} · {amount}. {fix}",
       "cooldownDays": 1,
       "patienceDays": 2,
       "ignored": { "loyalty": -10, "allHappiness": -3, "message": "{name} gave up waiting. The residents feel ignored, and they're saying so over dinner." },
@@ -173,7 +230,13 @@
       "id": "poor_meals",
       "fixRooms": ["farm"],
       "title": "The same meal again",
-      "text": "{name} sets a tray down on your desk. \"Ration paste, or one crop boiled every way there is. A galley can mix up to four kinds of food into one meal: two would already be a real change. We could grow {crops}.\"",
+      "text": "{name} sets a tray down on your desk. \"Ration paste, or one crop boiled every way there is. Two kinds of food would already be a real change. We could grow {crops}.\"",
+      "voices": {
+        "blunt": "{name} drops a tray on your desk. \"The same slop, every meal. People are sick of it. We could grow {crops}.\"",
+        "worried": "{name} sets a tray down on your desk. \"People are leaving half their plates. It's the same meal, over and over. We could grow {crops}.\"",
+        "cheerful": "{name} sets a tray down with a flourish. \"Today's special: the same as yesterday's. We could grow {crops}, you know.\""
+      },
+      "aside": "A galley mixes up to four kinds of food into one meal: two kinds make it average, not poor.",
       "minDay": 8,
       "cooldownDays": 8,
       "patienceDays": 2,
@@ -191,20 +254,20 @@
             "broken": { "loyalty": -15, "allHappiness": -4, "message": "Still the same meal. {name} is telling everyone you forgot about the galley." }
           }
         },
-        {
-          "id": "refuse",
-          "label": "Food is food",
-          "hint": "\"There are holes on Mars with less.\" Loyalty and happiness drop a little.",
-          "loyalty": -10,
-          "allHappiness": -2
-        }
+        { "id": "refuse", "label": "Food is food", "hint": "\"There are holes on Mars with less.\" Loyalty and happiness drop a little.", "loyalty": -10, "allHappiness": -2 }
       ]
     },
     {
       "id": "average_meals",
       "fixRooms": ["farm"],
       "title": "A better table",
-      "text": "{name} is here from the galley crew. \"Two kinds of food in every meal keeps us going, but three or four would make a proper meal, the kind people look forward to. We could grow {crops}.\"",
+      "text": "{name} is here from the galley crew. \"Two kinds of food in every meal keeps us going, but it could be a proper meal, the kind people look forward to. We could grow {crops}.\"",
+      "voices": {
+        "blunt": "{name} is here from the galley crew. \"Dinner's fine. Just fine. People want more than fine. We could grow {crops}.\"",
+        "worried": "{name} is here from the galley crew. \"Nobody's complaining, exactly, but dinner's become a chore. We could grow {crops}.\"",
+        "cheerful": "{name} is here from the galley crew, full of plans. \"Imagine three or four kinds on one plate! We could grow {crops}.\""
+      },
+      "aside": "Meals with three kinds of food are good, with four great.",
       "minDay": 8,
       "cooldownDays": 8,
       "patienceDays": 2,
@@ -222,25 +285,22 @@
             "broken": { "loyalty": -15, "allHappiness": -4, "message": "Still the same two things on every plate. {name} says you broke your word." }
           }
         },
-        {
-          "id": "refuse",
-          "label": "Food is food",
-          "hint": "\"There are holes on Mars with less.\" Loyalty and happiness drop a little.",
-          "loyalty": -10,
-          "allHappiness": -2
-        }
+        { "id": "refuse", "label": "Food is food", "hint": "\"There are holes on Mars with less.\" Loyalty and happiness drop a little.", "loyalty": -10, "allHappiness": -2 }
       ]
     },
     {
       "id": "greeter",
       "title": "Just saying hi",
       "text": "{name} pokes their head round the door. \"Don't mind me, I only wanted to say hello. It's good to have someone in charge down here.\"",
+      "voices": {
+        "blunt": "{name} pokes their head round the door. \"Just saying hello. Glad someone's in charge down here.\"",
+        "worried": "{name} knocks twice before coming in. \"Sorry, I hope I'm not interrupting. I only wanted to say hello. It's a comfort, having someone in charge.\"",
+        "cheerful": "{name} bounds in. \"Hello! I just wanted to meet the person in charge. It's good to have you down here.\""
+      },
       "cooldownDays": 0,
       "patienceDays": 0,
       "ignored": {},
-      "choices": [
-        { "id": "hello", "label": "Nice to meet you", "hint": "They'll be back when something's on their mind.", "message": "{name} heads back to work, smiling." }
-      ]
+      "choices": [{ "id": "hello", "label": "Nice to meet you", "hint": "They'll be back when something's on their mind.", "message": "{name} heads back to work, smiling." }]
     }
   ]
 }

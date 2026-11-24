@@ -7,7 +7,9 @@ import type { Location } from "../src/sim/placement";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
 import { setAdults } from "../src/sim/people";
-import { stepVisits, visitDef } from "../src/sim/visits";
+import { stepVisits, visitDef, visitDefs, voiceOf } from "../src/sim/visits";
+import visitsData from "../data/visits.json";
+import notablesData from "../data/notables.json";
 
 const config: SimConfig = { ...baseConfig, earth: { ...baseConfig.earth, firstDropDay: 1e6 } };
 const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
@@ -183,8 +185,10 @@ describe("the doctor and the residents' delegate (F-018)", () => {
     hungry(s, 13);
     const note = visitOf(s, "doctor_note")!;
     expect(note.cause).toBe("health:meals");
-    expect(note.text).toMatch(/Meals: people get 0% of what they need/);
-    expect(note.text).toMatch(/health a month/);
+    // They say it like a person (#433); the diagnosis row and its numbers go in the aside.
+    expect(note.text).toMatch(/enough to eat/);
+    expect(note.text).not.toMatch(/health a month|%/);
+    expect(note.aside).toMatch(/Meals: people get 0% of what they need · [\d.]+ health a month\. People eat only cooked meals/);
     expect(visitDef("doctor_note").choices.map((c) => c.id)).toEqual(["noted"]);
     expect(applyCommand(s, { type: "answerVisit", visitId: note.id, choice: "noted" })).toEqual({ ok: true });
     expect(s.office.promises).toHaveLength(0);
@@ -290,3 +294,22 @@ describe("fair complaints (#434)", () => {
     expect(s.office.waiting.some((v) => v.cause === "health:sanitation")).toBe(true);
   });
 });
+
+describe("voices (#433)", () => {
+  it("a notable's first trait with a voice picks it, else they speak plainly", () => {
+    expect(voiceOf(["Greedy", "Hothead"])).toBe("blunt");
+    expect(voiceOf(["Cautious", "Charismatic"])).toBe("worried");
+    expect(voiceOf(["Greedy", "Martian-born"])).toBeUndefined();
+  });
+
+  it("every visit has words for every voice, and every voiced trait is a real one", () => {
+    for (const def of visitDefs) for (const v of ["blunt", "worried", "cheerful"] as const) expect(def.voices?.[v], `${def.id} ${v}`).toBeTruthy();
+    for (const t of Object.keys(visitsData.voices.byTrait)) expect(notablesData.traits).toContain(t);
+  });
+
+  it("every cause the doctor or the delegate can come about has a spoken line", () => {
+    const say = visitsData.concerns.say as Record<string, string>;
+    for (const key of Object.keys(visitsData.concerns.fixRooms)) expect(say[key], key).toBeTruthy();
+  });
+});
+

@@ -17,6 +17,8 @@ import type { SimState } from "./state";
 // either kept or broken. Unanswered visits leave after a while, unhappy.
 // The doctor and a residents' delegate (F-018) come about a diagnosis cause
 // that has lasted: the first time only to tell you, later for a promise.
+// Each speaks in a voice their traits colour (#433), with the numbers and the
+// fix in a small aside rather than read out.
 
 export interface Outcome {
   loyalty?: number;
@@ -42,10 +44,18 @@ export interface ChoiceDef extends Outcome {
   promise?: PromiseDef;
 }
 
+/** How a notable talks (#433): their first trait in voices.byTrait picks it; plain if none does. */
+export type Voice = "blunt" | "worried" | "cheerful";
+
 export interface VisitDef {
   id: string;
   title: string;
+  /** What they say, plainly. */
   text: string;
+  /** What they say in each voice; text for a voice left out. */
+  voices?: Partial<Record<Voice, string>>;
+  /** The numbers and the fix, shown small under what they say. */
+  aside?: string;
   minDay?: number;
   /** The rooms that fix what it's about: it waits until one can be built (#434). */
   fixRooms?: string[];
@@ -65,6 +75,8 @@ export interface Visit {
   cause?: string;
   title: string;
   text: string;
+  /** The numbers and the fix, shown small under the text (absent in older saves, and for visits with none). */
+  aside?: string;
   arrivedTick: number;
   /** When they give up and go; absent for one who waits until answered (the tutorial's greeter). */
   leavesTick?: number;
@@ -181,6 +193,9 @@ function trackCauses(state: SimState): void {
 
 const tenth = (v: number) => String(Math.round(v * 10) / 10);
 
+const lowerFirst = (t: string) => t.charAt(0).toLowerCase() + t.slice(1);
+const upperFirst = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
+
 /** The worst lasting cause for the doctor (health) or the delegate, the first time (note) or again (promise). */
 function concernTrigger(state: SimState, cfg: SimConfig, health: boolean, again: boolean): Trigger | null {
   const office = state.office;
@@ -199,10 +214,14 @@ function concernTrigger(state: SimState, cfg: SimConfig, health: boolean, again:
   const causes = health ? d.health.causes : d.happiness.causes;
   const cause = causes.filter((c) => due.includes(`${health ? "health" : "happiness"}:${c.id}`)).sort((a, b) => a.amount - b.amount)[0];
   if (!cause) return null;
+  const key = `${health ? "health" : "happiness"}:${cause.id}`;
+  const say = (CONCERNS.say as Record<string, string>)[key] ?? lowerFirst(cause.text);
   return {
     role: health ? "doctor" : "organizer",
-    cause: `${health ? "health" : "happiness"}:${cause.id}`,
+    cause: key,
     vars: {
+      say,
+      Say: upperFirst(say),
       cause: cause.text,
       amount: health ? `${tenth(-cause.amount)} health a month` : `${tenth(-cause.amount)} points of happiness`,
       fix: cause.fix ?? "",
@@ -268,11 +287,27 @@ function fill(text: string, state: SimState, notableId: number, roomId?: number,
     .replaceAll("{name}", notable?.name ?? "A colonist")
     .replaceAll("{home}", room ? roomDef(room.type).name.toLowerCase() : "homes")
     .replaceAll("{floor}", room?.at.kind === "ring" ? String(room.at.floor) : "1")
-    .replace(/\{(cause|what|amount|fix|crops)\}/g, (m, k: string) => vars[k] ?? m)
+    .replace(/\{(cause|what|amount|fix|crops|say|Say)\}/g, (m, k: string) => vars[k] ?? m)
     // A cause with no fix leaves a gap.
     .replace(/ +"(?=\s|$)/g, '"')
     .replace(/ {2,}/g, " ")
     .trim();
+}
+
+const VOICE_BY_TRAIT = raw.voices.byTrait as Record<string, Voice>;
+
+/** The voice a notable speaks in: their first trait that has one, else plain (undefined). */
+export function voiceOf(traits: readonly string[] | undefined): Voice | undefined {
+  for (const t of traits ?? []) if (VOICE_BY_TRAIT[t]) return VOICE_BY_TRAIT[t];
+  return undefined;
+}
+
+/** What a visit's notable says, in their voice, and its aside, filled in. */
+function spoken(def: VisitDef, state: SimState, notableId: number, roomId?: number, vars?: Record<string, string>): { text: string; aside?: string } {
+  const voice = voiceOf(state.notables.find((n) => n.id === notableId)?.traits);
+  const text = fill((voice && def.voices?.[voice]) || def.text, state, notableId, roomId, vars);
+  const aside = def.aside ? fill(def.aside, state, notableId, roomId, vars) : "";
+  return aside ? { text, aside } : { text };
 }
 
 /** The words a promise's outcome can use: what it was about. */
@@ -351,7 +386,7 @@ export function stepVisits(state: SimState, cfg: SimConfig): void {
       ...(trig.roomId !== undefined ? { roomId: trig.roomId } : {}),
       ...(trig.cause ? { cause: trig.cause } : {}),
       title: def.title,
-      text: fill(def.text, state, notableId, trig.roomId, trig.vars),
+      ...spoken(def, state, notableId, trig.roomId, trig.vars),
       arrivedTick: state.tick,
       ...(def.patienceDays > 0 ? { leavesTick: state.tick + def.patienceDays * cfg.ticksPerDay } : {}),
     });
@@ -382,7 +417,7 @@ export function greet(state: SimState, cfg: SimConfig): { ok: true } {
     kind: def.id,
     notableId,
     title: def.title,
-    text: fill(def.text, state, notableId),
+    ...spoken(def, state, notableId),
     arrivedTick: state.tick,
   });
   const name = state.notables.find((n) => n.id === notableId)?.name ?? "Someone";
