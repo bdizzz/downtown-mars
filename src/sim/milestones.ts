@@ -42,7 +42,7 @@ export interface MilestoneDef {
   group: string;
   check: MilestoneCheck;
   at?: number;
-  /** closedLoop: the resources that make up the loop (clean and gray water). */
+  /** closedLoop: the resources that make up the loop (clean and gray water); `at` is the people it needs first. */
   loop?: string[];
   /** selfSufficient: which tier (sufficiency.ts), held for `months` game months. */
   tier?: Tier;
@@ -113,7 +113,9 @@ export function passed(state: SimState, m: MilestoneDef): boolean {
     case "domed":
       return !!state.layout.domed;
     case "closedLoop":
-      return closedLoop(state, m.loop ?? []);
+      // A tiny crew with the landing kit's recycler closes the loop by itself (#441): it counts once
+      // the hole is big enough for its water to matter.
+      return state.population.count >= (m.at ?? 0) && closedLoop(state, m.loop ?? []);
     case "selfSufficient":
       return heldMonths(state, config, m.tier ?? "alone") >= (m.months ?? 1);
     case "noDrops":
