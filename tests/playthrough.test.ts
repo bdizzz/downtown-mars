@@ -16,7 +16,7 @@ construction.instant = false;
 storage.unlimited = false;
 
 describe("first month playthrough", () => {
-  const { state, log, builtAt } = run(30);
+  const { state, log, builtAt, visits } = run(30);
   if (env.PLAYTEST) {
     console.table(log);
     console.log("built on day:", Object.fromEntries(Object.entries(builtAt).map(([i, d]) => [`${i} ${PLAN[+i]!.room}`, d.toFixed(1)])));
@@ -24,6 +24,11 @@ describe("first month playthrough", () => {
   }
 
   const at = (room: string) => builtAt[PLAN.findIndex((p) => p.room === room)]!;
+
+  it("has nobody at the office in the first three months (#434)", () => {
+    expect(visits.length).toBeGreaterThan(0);
+    expect(Math.min(...visits.map((v) => v.day))).toBeGreaterThanOrEqual(3);
+  });
 
   it("builds the critical set on day 1", () => {
     expect(at("life_support")).toBeLessThan(1);

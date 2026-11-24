@@ -117,11 +117,17 @@ export interface Day {
 }
 
 /** Plays `days` from a landing kit (the bare one unless told otherwise), building the plan less what the kit brings. */
-export function run(days: number, kit: LandingKitName = "bare"): { state: SimState; log: Day[]; builtAt: Record<number, number>; plan: Plan[] } {
+export function run(
+  days: number,
+  kit: LandingKitName = "bare",
+): { state: SimState; log: Day[]; builtAt: Record<number, number>; plan: Plan[]; visits: { kind: string; day: number }[] } {
   const s = createInitialState(config, undefined, kit);
   const PLAN = planFor(kit);
   const log: Day[] = [];
   const builtAt: Record<number, number> = {};
+  /** Every office visit seen, with the day it arrived. */
+  const visits: { kind: string; day: number }[] = [];
+  const seen = new Set<number>();
   let next = 0;
   let larder = Infinity;
   const cmd = (c: SimCommand) => applyCommand(s, c);
@@ -159,6 +165,10 @@ export function run(days: number, kit: LandingKitName = "bare"): { state: SimSta
       // Anything still cut off (nothing to carve along yet, or short of rock): try again; and stray corridors joined up (#590).
       joinUp(s);
       for (const v of [...s.office.waiting]) {
+        if (!seen.has(v.id)) {
+          seen.add(v.id);
+          visits.push({ kind: v.kind, day: v.arrivedTick / config.ticksPerDay });
+        }
         const choice = VISIT_ANSWERS[v.kind];
         if (choice && !cmd({ type: "answerVisit", visitId: v.id, choice }).ok) {
           cmd({ type: "answerVisit", visitId: v.id, choice: "promise" });
@@ -206,6 +216,6 @@ export function run(days: number, kit: LandingKitName = "bare"): { state: SimSta
       larder = Infinity;
     }
   }
-  return { state: s, log, builtAt, plan: PLAN };
+  return { state: s, log, builtAt, plan: PLAN, visits };
 }
 

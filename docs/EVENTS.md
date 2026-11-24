@@ -29,6 +29,8 @@ Everything else here (the strike chain, cave-ins, outbreaks, the network events,
 
 ## Citizen visits
 
+**Fair complaints (#434):** no visit in a hole's first 3 months, one at a time until month 8, and none about a cause until a room that fixes it is unlocked (and, guided, shown); `grace` and `fixRooms` in `data/visits.json`.
+
 | Event | Trigger | Choices |
 | --- | --- | --- |
 | Noise complaint | Residents living near a loud room | Move the room; build a corridor buffer; enact quiet hours; refuse |

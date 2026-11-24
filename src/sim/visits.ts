@@ -1,10 +1,13 @@
 import { cropsNotGrown, FOOD, variety } from "./food";
 import raw from "../../data/visits.json";
+import tutorial from "../../data/tutorial.json";
 import type { SimConfig } from "./config";
 import { DIAGNOSIS, diagnose } from "./diagnosis";
+import { siteRefusal } from "./costs";
 import { isActive } from "./economy";
 import { postMessage } from "./messages";
 import { enact } from "./ordinances";
+import { holeGates } from "./people";
 import { nextRandom } from "./rng";
 import { roomDef } from "./rooms";
 import type { SimState } from "./state";
@@ -44,6 +47,8 @@ export interface VisitDef {
   title: string;
   text: string;
   minDay?: number;
+  /** The rooms that fix what it's about: it waits until one can be built (#434). */
+  fixRooms?: string[];
   cooldownDays: number;
   patienceDays: number;
   ignored: Outcome;
@@ -117,6 +122,23 @@ const noisiestHome = (state: SimState) =>
     .filter((p) => p.residents > 0 && p.factors.noise <= -1)
     .sort((a, b) => a.factors.noise - b.factors.noise)[0];
 
+// ---- fair complaints (#434): nothing asked for before the player could have built it ----
+
+const GRACE = raw.grace;
+const CAUSE_ROOMS = raw.concerns.fixRooms as Record<string, string[]>;
+const GUIDED_STEPS = tutorial.guided.steps.length;
+
+/** Whether the player can build this room here now: unlocked in this hole and, in the guided tutorial, shown by a step so far. */
+function canBuild(state: SimState, room: string): boolean {
+  if (siteRefusal(room, holeGates(state))) return false;
+  const g = state.guide;
+  if (!g || g.step >= GUIDED_STEPS) return true;
+  return g.unlocked.includes(`room:${room}`) || g.unlocked.includes("room:*");
+}
+
+/** Fair to ask about: nothing fixes it with a room (a corridor, a bulkhead), or one of the rooms that do can be built. */
+const fair = (state: SimState, rooms?: string[]) => !rooms?.length || rooms.some((r) => canBuild(state, r));
+
 const hasClinic = (state: SimState) => state.layout.rooms.some((r) => r.type === "clinic" && isActive(r));
 
 // ---- the doctor and the residents' delegate: a diagnosis cause that has lasted ----
@@ -166,6 +188,7 @@ function concernTrigger(state: SimState, cfg: SimConfig, health: boolean, again:
   const due = Object.entries(office.causeSince ?? {})
     .filter(([key, since]) => {
       if (isHealth(key) !== health || state.tick - since < CONCERNS.holdDays * day) return false;
+      if (!fair(state, CAUSE_ROOMS[key])) return false;
       if (office.waiting.some((v) => v.cause === key) || office.promises.some((p) => p.cause === key)) return false;
       const last = office.lastVisit[`cause:${key}`];
       return again ? last !== undefined && state.tick - last >= CONCERNS.repeatDays * day : last === undefined;
@@ -302,12 +325,16 @@ export function stepVisits(state: SimState, cfg: SimConfig): void {
 
   trackCauses(state);
 
-  // New visitors, if there's room to wait.
+  // New visitors, if there's room to wait: none in the first months after landing, and one at a time for a while after (#434).
   const day = state.tick / cfg.ticksPerDay;
+  const landed = (state.tick - state.foundedTick) / cfg.ticksPerDay;
+  if (landed < GRACE.afterLandingDays) return;
+  const seats = landed < GRACE.earlyDays ? GRACE.earlyAtOnce : raw.waitingRoomSize;
   for (const def of visitDefs) {
-    if (office.waiting.length >= raw.waitingRoomSize) break;
+    if (office.waiting.length >= seats) break;
     if (office.waiting.some((v) => v.kind === def.id)) continue;
     if (def.minDay !== undefined && day < def.minDay) continue;
+    if (!fair(state, def.fixRooms)) continue;
     const last = office.lastVisit[def.id];
     if (last !== undefined && state.tick - last < def.cooldownDays * cfg.ticksPerDay) continue;
     const trig = TRIGGERS[def.id]?.(state, cfg);
