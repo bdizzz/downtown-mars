@@ -7,7 +7,7 @@ import type { Location } from "../src/sim/placement";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
 import { setAdults } from "../src/sim/people";
-import { visitDef } from "../src/sim/visits";
+import { stepVisits, visitDef } from "../src/sim/visits";
 
 const config: SimConfig = { ...baseConfig, earth: { ...baseConfig.earth, firstDropDay: 1e6 } };
 const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
@@ -15,8 +15,10 @@ const hours = (s: SimState, n: number) => {
   for (let i = 0; i < n * 10; i++) step(s, config);
 };
 
+/** A hole landed long ago, past the grace after landing (#434). */
 function rich(): SimState {
   const s = createInitialState(config);
+  s.foundedTick = -100 * config.ticksPerDay;
   s.drill.active = false;
   Object.assign(s.resources, { metal: 500, rock: 500, brick: 500, machinery: 50, electronics: 50 });
   return s;
@@ -232,5 +234,59 @@ describe("the doctor and the residents' delegate (F-018)", () => {
     hungry(s, 12);
     fed(s, 14);
     expect(visitOf(s, "doctor_note")).toBeUndefined();
+  });
+});
+
+describe("fair complaints (#434)", () => {
+  const kinds = (s: SimState) => s.office.waiting.map((v) => v.kind);
+
+  it("nobody comes in the first three months after landing, however bad it is", () => {
+    const s = noisyDorm();
+    s.foundedTick = 0;
+    hours(s, 3 * 24 - 1);
+    expect(s.office.waiting).toHaveLength(0);
+    hours(s, 2);
+    expect(kinds(s)).toContain("noise_complaint");
+  });
+
+  it("only one waits at a time until month 8", () => {
+    const s = noisyDorm();
+    s.foundedTick = 0;
+    s.tick = 4 * config.ticksPerDay;
+    hours(s, 24);
+    expect(s.office.waiting).toHaveLength(1);
+    s.tick = 8 * config.ticksPerDay;
+    hours(s, 1);
+    expect(s.office.waiting.length).toBeGreaterThan(1);
+  });
+
+  it("no clinic demand in the guided game until the tutorial has shown the clinic", () => {
+    const s = rich();
+    s.tick = 10 * config.ticksPerDay;
+    s.guide = { step: 5, unlocked: ["room:galley", "room:restroom"], calm: false };
+    hours(s, 2);
+    expect(kinds(s)).not.toContain("clinic_demand");
+    s.guide = { step: 99, unlocked: [], calm: false }; // past the last step: everything's shown
+    hours(s, 1);
+    expect(kinds(s)).toContain("clinic_demand");
+  });
+
+  it("the doctor waits for a cause until a room that fixes it is shown", () => {
+    const s = rich();
+    s.tick = 10 * config.ticksPerDay;
+    s.guide = { step: 5, unlocked: ["room:farm"], calm: false };
+    s.office.causeSince = { "health:sanitation": 0 };
+    s.population.healthDrain = { sanitation: 1 };
+    // Straight to the visit check, so the drain stays as set.
+    const check = () => {
+      s.tick += 10;
+      s.population.healthDrain = { sanitation: 1 };
+      stepVisits(s, config);
+    };
+    check();
+    expect(s.office.waiting.some((v) => v.cause === "health:sanitation")).toBe(false);
+    s.guide.unlocked.push("room:restroom");
+    check();
+    expect(s.office.waiting.some((v) => v.cause === "health:sanitation")).toBe(true);
   });
 });
