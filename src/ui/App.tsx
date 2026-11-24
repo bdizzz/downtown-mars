@@ -22,6 +22,7 @@ import { MaintenancePanel } from "./MaintenancePanel";
 import { DirectoryPanel } from "./DirectoryPanel";
 import { MilestonesPanel } from "./MilestonesPanel";
 import { Menu } from "./Menu";
+import { AutoGraphics } from "./AutoGraphics";
 import { Messages } from "./Messages";
 import { Office } from "./Office";
 import { OfficeScene } from "./OfficeScene";
@@ -1094,6 +1095,7 @@ export function App() {
       )}
       {helpOpen && <Help onClose={() => setHelpOpen(false)} />}
       <UpdateBanner saveFirst={titling ? null : () => saveTo("autosave")} />
+      <AutoGraphics graphics={settings.graphics} on={settings.autoGraphics} memory={settings.autoGraphicsMemory} onTitle={titling && sceneLoaded && !titleStill} update={updateSettings} />
       <SlowCard graphics={settings.graphics} onGraphics={(graphics) => updateSettings({ graphics })} active={!menu && !welcome && settings.view === "3d"} />
     </div>
   );

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { cleanGraphics, DEFAULT_GRAPHICS, GRAPHICS_PRESETS, type Graphics } from "../view/graphics";
+import { cleanAutoMemory, DEFAULT_AUTO_MEMORY, type AutoGraphicsMemory } from "../view/autoGraphics";
 import { clampCutAngle, DEFAULT_VIEW3D, isCamera, type View3d } from "../view/cameras";
 import { storageKey } from "./storageKey";
 import { defaultOf } from "./settingsTable";
@@ -50,6 +51,10 @@ export interface Settings {
   view: ViewMode;
   /** 3D graphics: sharpness, ambient life, and how much of each effect. */
   graphics: Graphics;
+  /** Adjust the graphics preset by the frame rate (#591): down on a slow title, up when there's room to spare. */
+  autoGraphics: boolean;
+  /** What auto-adjust remembers: the preset it last set, and whether raising is off for good. */
+  autoGraphicsMemory: AutoGraphicsMemory;
   /** The 3D camera, walls down and the overlays, as last used. */
   view3d: View3d;
 }
@@ -72,6 +77,8 @@ export const DEFAULT_SETTINGS: Settings = {
   fullscreen: defaultOf("fullscreen", "boolean"),
   view: "3d",
   graphics: DEFAULT_GRAPHICS,
+  autoGraphics: defaultOf("autoGraphics", "boolean"),
+  autoGraphicsMemory: DEFAULT_AUTO_MEMORY,
   view3d: DEFAULT_VIEW3D,
 };
 
@@ -103,7 +110,7 @@ export function loadSettings(): Settings {
     // Sound effects and ambience were on/off switches (T-066): off becomes silent, on the default.
     const { quality3d: _old, sfx, ambient, ...rest } = stored;
     const sound = { effects: sfx === false ? 0 : DEFAULT_SETTINGS.effects, ambience: ambient === false ? 0 : DEFAULT_SETTINGS.ambience };
-    const s: Settings = { ...DEFAULT_SETTINGS, ...sound, ...rest, graphics, view3d: cleanView3d(stored.view3d) };
+    const s: Settings = { ...DEFAULT_SETTINGS, ...sound, ...rest, graphics, autoGraphicsMemory: cleanAutoMemory(stored.autoGraphicsMemory), view3d: cleanView3d(stored.view3d) };
     // A release build always plays sound; the switch is only for dev and test builds.
     if (!isDevBuild()) s.soundOn = true;
     return VIEW_MODES.some((m) => m.id === s.view) ? s : { ...s, view: DEFAULT_SETTINGS.view };
