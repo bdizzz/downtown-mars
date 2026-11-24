@@ -147,6 +147,7 @@ See `PLAN-M11.md`: built (Sep 30), with its notes as built.
 See `PLAN-M12.md` (Claude's defaults, built at Bryon's "let's do all that"; every number is in data).
 
 - **Bulkheads** on built corridor segments (not tubes): air and smell stop, people pass. 2 metal; free to take out.
+  - **Where along the segment** (#569, Bryon): a quarter or three quarters along it, not the middle, so it can't cut through a door; the half under the pointer lights up and picks which (`bulkhead.at` in `data/corridors.json`). In the network it splits the segment in two, joined for people but not air, and each door counts on its own side of it (a room's opening onto that border goes where `doorAlong` puts its door). Clicking the other half moves one, free. Noise is unchanged: it radiates through rock and stops at corridors, it doesn't travel along them. Old saves' bulkheads go a quarter along (save v29).
 - **Dust through the airlock:** air quality −1 by the airborne rules, twice as bad in a dust storm.
 - **Crowding:** past 5 residents a cell, a home loses 0.15 air quality per resident a cell (a full bunk dorm −0.45).
 - **Window walls** where no tube runs; open space and walk-through rooms walled off from the shaft without one.
