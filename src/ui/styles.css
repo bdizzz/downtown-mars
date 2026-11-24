@@ -808,7 +808,7 @@ body { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%;
 .welcome .welcome-guided .k { color: var(--muted); font-size: 12.5px; }
 /* Behind the welcome card and the title, only Mars and the hole: the rest of the interface comes in when they're closed. */
 .app.welcoming > :not(.main):not(.menu-backdrop):not(.update-banner), .app.welcoming .view > :not(.pixi-host), .app.welcoming .pixi-host > :not(canvas),
-.app.titling > :not(.main):not(.menu-backdrop):not(.update-banner), .app.titling .view > :not(.pixi-host), .app.titling .pixi-host > :not(canvas), .app.titling .main > :not(.view) { display: none; }
+.app.titling > :not(.main):not(.menu-backdrop):not(.update-banner):not(.auto-gfx-toast), .app.titling .view > :not(.pixi-host), .app.titling .pixi-host > :not(canvas), .app.titling .main > :not(.view) { display: none; }
 
 /* The top bar and the resource grid (T-089): icons from view/icons.ts, what needs you first, and
    cells that frame themselves when they're a worry (dashed amber), trouble (solid red) or full (dotted
@@ -947,6 +947,15 @@ body { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%;
 .slow-card .slow-later { background: none; color: var(--text); border-color: transparent; padding: 4px 6px; opacity: 0.7; }
 .slow-card .slow-later:hover { opacity: 1; }
 @media (max-width: 560px) { .slow-card { flex-wrap: wrap; } }
+/* Automatic graphics (#591): a toast at the top, over the title or the game, saying the graphics changed. */
+.auto-gfx-toast {
+  position: fixed; top: calc(16px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 30;
+  display: flex; align-items: center; gap: 8px; max-width: min(560px, calc(100% - 32px)); box-sizing: border-box;
+  background: var(--panel); border: 1px solid var(--accent); border-radius: 8px; padding: 6px 8px 6px 14px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5); font-size: 13.5px; color: var(--text);
+}
+.auto-gfx-toast button { font: inherit; background: none; color: var(--text); border: none; padding: 4px 6px; opacity: 0.7; cursor: pointer; }
+.auto-gfx-toast button:hover { opacity: 1; }
 .tutorial .tip-actions { display: flex; gap: 6px; }
 /* Charts → Directory (T-149): floors from the surface down, their rooms with a status dot. */
 .directory { width: 300px; }
