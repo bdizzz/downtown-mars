@@ -8,13 +8,13 @@ import type { Happiness } from "../sim/happiness";
 import type { Cell, Layout, RoomInstance } from "../sim/placement";
 import type { DrillView } from "../sim/snapshot";
 import { floorSpan, pickAt } from "../render3d/cylinder";
-import { clickWith, CORRIDOR_MAP as MAP, corridorMap, demolishHoverFor, mapJoints, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor, haloEffect } from "../view/interaction";
+import { clickWith, hoverSpan, CORRIDOR_MAP as MAP, corridorMap, demolishHoverFor, mapJoints, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor, haloEffect } from "../view/interaction";
 import { EMPTY_CHAIN, extendChain, type Chain, type ChainPoint } from "../view/corridorPlan";
 import type { HoverInfo, Pick, Proposal, Stage, StageOptions, Tool, Warning } from "../view/types";
 import { isTouch, LongPress, TAP_SLOP, TapToAim, Touches, type Gesture } from "../view/touch";
 import { drawGlyph, drawPlus } from "./art";
 import { constructionStripes, corridorStrip } from "./corridorArt";
-import { edgeById, nearestEdge, nearestEdgeAt, type Edge } from "../sim/edges";
+import { alongEdge, edgeById, nearestEdge, nearestEdgeAt, type Edge } from "../sim/edges";
 import { HEAT } from "./palette";
 import { stackClick, stackHover } from "../view/stackSpots";
 import { BAND, C, FIELD_MAX, PX, TAU, cellSector, sector, drawBase, drawStackSpots, drawField as drawFieldOn, drawRooms, outlineCells, progressLabels as progressAt, roomCentre, stripOf, type ProgressJob } from "./planDraw";
@@ -116,12 +116,14 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
   }
 
   /** A border on this floor highlighted: its strip outlined in a colour, with the finish previewed if given. */
-  function ghostEdge(id: string, color: number, finish: string | null, alpha: number): void {
+  function ghostEdge(id: string, color: number, finish: string | null, alpha: number, span: [number, number] = [0, 1]): void {
     if (!layout) return;
     const e = edgeById(layout.hole, id);
     if (!e || e.floor !== floor) return;
     const s = stripOf(layout.hole, e);
-    const poly = corridorStrip(overlayCtx, s.at, s.normal, s.len, BAND, finish ?? "rock", finish ? 0.7 : 0);
+    // Only part of it: the bulkhead tool's half (#569).
+    const from = s.len * span[0];
+    const poly = corridorStrip(overlayCtx, (t) => s.at(t + from), (t) => s.normal(t + from), s.len * (span[1] - span[0]), BAND, finish ?? "rock", finish ? 0.7 : 0);
     overlayCtx.poly(poly).fill({ color, alpha }).stroke({ color, width: 2.5 });
   }
 
@@ -191,7 +193,7 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
       const color = info.edge.refusal || info.edge.erase ? C.bad : C.ok;
       const preview = !info.edge.erase && !info.edge.refusal && tool?.kind === "corridor" && !info.edge.windows ? tool.finish : null;
       // The windows tool lights up the whole wall it would glaze.
-      for (const id of info.edge.windows?.edges ?? [info.edge.id]) ghostEdge(id, color, preview, info.edge.erase ? 0.35 : 0.15);
+      for (const id of info.edge.windows?.edges ?? [info.edge.id]) ghostEdge(id, color, preview, info.edge.erase ? 0.35 : 0.15, hoverSpan(info.edge));
       return;
     }
     if (tool?.kind === "build" && info.check) {
@@ -322,7 +324,11 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
 
   function hoverInfo(): HoverInfo | null {
     if (!layout || !pointer) return null;
-    if (tool?.kind === "corridor") return edgeHoverFor(layout, resources, tool, pickHere(), edgeHere(), shift);
+    if (tool?.kind === "corridor") {
+      const edge = edgeHere();
+      const at = pointHere();
+      return edgeHoverFor(layout, resources, tool, pickHere(), edge, shift, edge && at ? alongEdge(edge, at.rings, at.turn) : 0.5);
+    }
     if (tool?.kind === "demolish") {
       const at = pointHere();
       return demolishHoverFor(layout, resources, pickHere(), at ? nearestEdgeAt(layout.hole, floor, at.rings, at.turn) : null);

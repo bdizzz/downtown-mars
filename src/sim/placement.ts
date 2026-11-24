@@ -113,8 +113,8 @@ export interface Layout {
   corridorsFilling?: Record<string, number>;
   /** Corridors being refitted in another lining (still usable meanwhile): edge id → job id. */
   corridorsRelining?: Record<string, number>;
-  /** Corridor segments with a sealed bulkhead: people pass, air doesn't (edge id → true). */
-  bulkheads?: Record<string, true>;
+  /** Corridor segments with a sealed bulkhead: people pass, air doesn't (edge id → which half it stands in, #569). */
+  bulkheads?: Record<string, "a" | "b">;
   /** The shaft dome is built: the shaft is pressurized, every floor's gallery open walkway. */
   domed?: boolean;
 }

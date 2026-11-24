@@ -1,7 +1,7 @@
 import { temperatureTint } from "../view/temperature";
 import type { FillInput, GraphicsContext } from "pixi.js";
 import { config } from "../sim/config";
-import { corridorJoints, corridors, hasBulkhead } from "../sim/corridors";
+import { bulkheadAt, corridorJoints, corridors } from "../sim/corridors";
 import { cellEdges, edgeById, edgeSides, isGalleryEdge, type ArcEdge, type Edge } from "../sim/edges";
 import { isOpen } from "../sim/excavation";
 import type { Hole } from "../sim/geometry";
@@ -325,9 +325,10 @@ export function drawCorridors(g: GraphicsContext, l: Layout, floor: number): voi
     const tube = isGalleryEdge(e);
     const poly = corridorStrip(g, s.at, s.normal, s.len, tube ? TUBE : BAND, finish, planned || building ? 0.45 : 1);
     // A bulkhead: a sealed door across the corridor, in hazard stripes.
-    if (hasBulkhead(l, id)) {
-      const [mx, my] = s.at(s.mid);
-      const [nx, ny] = s.normal(s.mid);
+    const seal = bulkheadAt(l, id);
+    if (seal !== null) {
+      const [mx, my] = s.at(s.len * seal);
+      const [nx, ny] = s.normal(s.len * seal);
       const half = BAND / 2 + 1;
       g.moveTo(mx - nx * half, my - ny * half).lineTo(mx + nx * half, my + ny * half).stroke({ color: 0x3b3f45, width: 5 });
       g.moveTo(mx - nx * half, my - ny * half).lineTo(mx + nx * half, my + ny * half).stroke({ color: 0xe0a03a, width: 2 });

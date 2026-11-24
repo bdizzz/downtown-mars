@@ -10,7 +10,7 @@ import { CATEGORY_COLORS } from "../render2d/palette";
 import { airlock, headframe, surfaceBuilding, surfaceCable } from "./surface3d";
 import { ARC_STEPS, FLOOR_H, floorSpan, RIG_DROP, WALL_T, LEDGE_THICKNESS, openShaftRadius, RAIL_HEIGHT, slotAngles, TAU } from "./cylinder";
 import { cellEdges, edgeById, edgeSides, edgeVertices, galleryEdges, isGalleryEdge, outsideEdges, vertexKey, type ArcEdge, type Edge } from "../sim/edges";
-import { corridorJoints, corridors, finishDef, hasBulkhead } from "../sim/corridors";
+import { bulkheadAt, corridorJoints, corridors, finishDef } from "../sim/corridors";
 import { isOpen } from "../sim/excavation";
 import { joinsOpen, openSpaceAt } from "../view/openSpace";
 import { cropStage, FIT, frameOf, furnish, roomRoll, type Fitted } from "../view/furnish";
@@ -2681,14 +2681,16 @@ export function corridorGhostY(layout: Layout, e: Edge): number {
  * A corridor's floor: a strip centred on its border, `lift` above the floor (or on the cut, from above).
  * Given a side (as edgeSides orders them), just the half toward it: the windows tool's ghost, on the glazed room's side.
  */
-export function corridorStripGeometry(layout: Layout, e: Edge, y: number, side?: 0 | 1): THREE.BufferGeometry {
+export function corridorStripGeometry(layout: Layout, e: Edge, y: number, side?: 0 | 1, span: [number, number] = [0, 1]): THREE.BufferGeometry {
   const hole = layout.hole;
   const pos: number[] = [];
   const lo = side === 1 ? 0 : -1;
   const hi = side === 0 ? 0 : 1;
+  // Only part of it, from span[0] to span[1] along it (the bulkhead tool's half, #569).
+  const part = (x0: number, x1: number): [number, number] => [x0 + (x1 - x0) * span[0], x0 + (x1 - x0) * span[1]];
   if (e.kind === "radial") {
     const a = e.turn * TAU;
-    const [r0, r1] = ringRadii(hole, e.ring);
+    const [r0, r1] = part(...ringRadii(hole, e.ring));
     // A flat rectangle along the spoke, HALL either side of it (side 0 is the lower slot, toward smaller angles).
     const px = -Math.sin(a) * HALL;
     const pz = Math.cos(a) * HALL;
@@ -2697,7 +2699,8 @@ export function corridorStripGeometry(layout: Layout, e: Edge, y: number, side?:
   } else {
     // Side 0 is the inner ring.
     const r = ringRadii(hole, e.circle)[1];
-    flatRing(pos, r + lo * HALL, r + hi * HALL, e.a0 * TAU, e.a1 * TAU, y);
+    const [a0, a1] = part(e.a0, e.a1);
+    flatRing(pos, r + lo * HALL, r + hi * HALL, a0 * TAU, a1 * TAU, y);
   }
   return geometry(pos);
 }
@@ -2758,7 +2761,7 @@ function corridorFloors(layout: Layout, topFloor: number | null): THREE.Object3D
 /** A bulkhead: a door frame across the corridor, with a sealed door in it. */
 const BULKHEAD = { height: 2.9, post: 0.22, depth: 0.3, frame: 0x3b3f45, door: 0xc9a456, stripe: 0xe0a03a };
 
-/** Bulkheads across the corridors that have them, at each segment's middle. */
+/** Bulkheads across the corridors that have them, a quarter or three quarters along each segment (#569). */
 function bulkheadGates(layout: Layout, topFloor: number | null): THREE.Object3D[] {
   const hole = layout.hole;
   const out: THREE.Object3D[] = [];
@@ -2766,22 +2769,23 @@ function bulkheadGates(layout: Layout, topFloor: number | null): THREE.Object3D[
   const door = material("bulkhead:door", () => new THREE.MeshStandardMaterial({ color: BULKHEAD.door, roughness: 0.6, metalness: 0.3 }));
   const stripe = material("bulkhead:stripe", () => new THREE.MeshStandardMaterial({ color: BULKHEAD.stripe, roughness: 0.6 }));
   for (const id of Object.keys(layout.bulkheads ?? {})) {
-    if (!hasBulkhead(layout, id)) continue;
+    const along = bulkheadAt(layout, id);
+    if (along === null) continue;
     const e = edgeById(hole, id);
     if (!e || e.floor > hole.floors || (topFloor !== null && e.floor < topFloor)) continue;
     const y = floorSpan(e.floor)[0];
-    // Its middle, and the way across the corridor (the gate's width runs that way).
+    // Where it stands along the segment, and the way across the corridor (the gate's width runs that way).
     let r: number;
     let a: number;
     let turn: number;
     if (e.kind === "radial") {
       const [r0, r1] = ringRadii(hole, e.ring);
-      r = (r0 + r1) / 2;
+      r = r0 + (r1 - r0) * along;
       a = e.turn * TAU;
       turn = -a - Math.PI / 2; // across a spoke: along the circle
     } else {
       r = circleRadius(hole, e.circle);
-      a = ((e.a0 + e.a1) / 2) * TAU;
+      a = (e.a0 + (e.a1 - e.a0) * along) * TAU;
       turn = -a; // across an arc: outward
     }
     const g = new THREE.Group();

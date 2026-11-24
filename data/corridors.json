@@ -25,6 +25,8 @@
   "bulkhead": {
     "name": "Bulkhead",
     "hint": "A sealed door across a corridor: people pass, air and smell don't",
+    "_at": "Where along its segment a bulkhead stands (#569), as a share of the way from the segment's first end (a spoke's inner end, an arc's start): half a, or half b. The pointer's half picks which; doors on the segment are sealed on whichever side of it they open.",
+    "at": { "a": 0.25, "b": 0.75 },
     "cost": {
       "metal": 2
     }

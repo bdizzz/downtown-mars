@@ -13,7 +13,7 @@ import type { Priority } from "./config";
 import { enact, repeal } from "./ordinances";
 import { isCrop, resourceDefs } from "./resources";
 import { capacities, mainOutput } from "./economy";
-import { bulkheadRefusal, corridorCost, corridorRefusal, corridors, CORRIDORS, finishFor, isFinish, recomputeAccess, routeToRoom, shortfall, totalCost } from "./corridors";
+import { bulkheadRefusal, corridorCost, hasBulkhead, type BulkheadHalf, corridorRefusal, corridors, CORRIDORS, finishFor, isFinish, recomputeAccess, routeToRoom, shortfall, totalCost } from "./corridors";
 import { edgeById, outsideEdges } from "./edges";
 import { setRoomWindows, wallOf, windowCost, windowRefusal } from "./windows";
 import { domeRefusal, dropCorridors, dropRefit, dropRelines, dropRoomJobs, finishAll, openDomeWhenFull, prioritize, queueCorridors, queueDome, queueExtension, queueFill, queueFloor, queueRefit, queueReline, queueRoom, type SegmentRefit } from "./construction";
@@ -103,8 +103,11 @@ export type SimCommand =
   | { type: "upgradeFloor"; roomId: number; flooring: string | null }
   /** Refit built corridor segments in a lining, as rooms are, through the construction queue. Skips those that can't be (in it already, not built); the rest go all or none, like a snaked chain. */
   | { type: "refitCorridors"; edges: string[]; material: string; finish?: string }
-  /** Fit sealed bulkheads across built corridor segments (on), or take them out (off, free). */
-  | { type: "setBulkhead"; edges: string[]; on: boolean }
+  /**
+   * Fit sealed bulkheads across built corridor segments (on), in one half of each (absent: `a`, #569),
+   * or take them out (off, free). One already there in the other half moves, free.
+   */
+  | { type: "setBulkhead"; edges: string[]; on: boolean; half?: BulkheadHalf }
   /** Put windows in (or take them out of) a room's wall: the borders along it. */
   | { type: "setWindows"; roomId: number; edges: string[]; on: boolean }
   /** Start building the dome over the shaft. */
@@ -493,11 +496,14 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
       return { ok: true };
     }
     case "setBulkhead": {
-      const ids = cmd.edges.filter((id, i) => cmd.edges.indexOf(id) === i && bulkheadRefusal(layout, id, cmd.on) === null);
-      if (!ids.length) return { ok: false, reason: bulkheadRefusal(layout, cmd.edges[0] ?? "", cmd.on) ?? "Nothing to do" };
+      const half = cmd.half ?? "a";
+      const ids = cmd.edges.filter((id, i) => cmd.edges.indexOf(id) === i && bulkheadRefusal(layout, id, cmd.on, half) === null);
+      if (!ids.length) return { ok: false, reason: bulkheadRefusal(layout, cmd.edges[0] ?? "", cmd.on, half) ?? "Nothing to do" };
       if (cmd.on) {
+        // Moving one to the other half is free: only new ones are paid for.
+        const fresh = ids.filter((id) => !hasBulkhead(layout, id)).length;
         const cost: Record<string, number> = {};
-        for (const [r, v] of Object.entries(corridors.bulkhead.cost)) cost[r] = v * ids.length;
+        for (const [r, v] of Object.entries(corridors.bulkhead.cost)) if (fresh) cost[r] = v * fresh;
         const short = shortfall(state.resources, cost);
         if (short) return { ok: false, reason: short };
         for (const [r, v] of Object.entries(cost)) {
@@ -505,7 +511,7 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
           record(state, r, "out", CORRIDORS, v);
         }
         layout.bulkheads ??= {};
-        for (const id of ids) layout.bulkheads[id] = true;
+        for (const id of ids) layout.bulkheads[id] = half;
       } else for (const id of ids) delete layout.bulkheads?.[id];
       layout.version++;
       return { ok: true };

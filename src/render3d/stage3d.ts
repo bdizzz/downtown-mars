@@ -10,10 +10,10 @@ import { cropStagesKey } from "../view/furnish";
 import type { Snapshot } from "../sim/snapshot";
 import { HEAT } from "../render2d/palette";
 import { cameraDragFor, turnKeyHeld, type CameraDrag } from "../view/cameraDrag";
-import { aimKeyFor, clickWith, CORRIDOR_MAP as MAP, corridorMap, demolishHoverFor, mapJoints, haloEffect, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor, surfaceSpots } from "../view/interaction";
+import { aimKeyFor, clickWith, hoverSpan, CORRIDOR_MAP as MAP, corridorMap, demolishHoverFor, mapJoints, haloEffect, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor, surfaceSpots } from "../view/interaction";
 import { EMPTY_CHAIN, extendChain, type Chain, type ChainPoint } from "../view/corridorPlan";
 import { tubeRuns, type TubeRun } from "../view/gallery";
-import { edgeById, edgeSides, edgeVertices, nearestEdgeAt, type Edge } from "../sim/edges";
+import { alongEdge, edgeById, edgeSides, edgeVertices, nearestEdgeAt, type Edge } from "../sim/edges";
 import { roomSide } from "../sim/windows";
 import type { HoverInfo, Pick, Proposal, Stage, StageOptions, Tool, Warning } from "../view/types";
 import { DEFAULT_GRAPHICS, drawsDetailedFurniture, type Graphics } from "../view/graphics";
@@ -1405,14 +1405,14 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
    * A border highlighted on its floor, where the corridor is (or will be), outlined so it reads against any finish.
    * Given a room (the windows tool's), only the half on that room's side.
    */
-  function ghostEdge(id: string, color: number, room?: RoomInstance): void {
+  function ghostEdge(id: string, color: number, room?: RoomInstance, span?: [number, number]): void {
     if (!layout) return;
     const e = edgeById(layout.hole, id);
     if (!e) return;
     // On the rock's top where it runs through uncut rock (T-169); on the floor for a room's windows, and when walking.
     const y = room || view.mode === "walk" ? floorSpan(e.floor)[0] + 0.08 : corridorGhostY(layout, e);
     const side = room ? (roomSide(layout, room, e) ?? undefined) : undefined;
-    const strip = new THREE.Mesh(corridorStripGeometry(layout, e, y, side), solid(color, 0.55));
+    const strip = new THREE.Mesh(corridorStripGeometry(layout, e, y, side, span), solid(color, 0.55));
     strip.renderOrder = 9;
     overlay.add(strip);
     const edges = new THREE.LineSegments(new THREE.EdgesGeometry(strip.geometry), lines(color));
@@ -1559,7 +1559,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     if (info.edge) {
       const w = info.edge.windows;
       const room = w?.roomId ? layout.rooms.find((r) => r.id === w.roomId) : undefined;
-      for (const id of w?.edges ?? [info.edge.id]) ghostEdge(id, info.edge.refusal || info.edge.erase ? HOVER.bad : HOVER.ok, room);
+      // The bulkhead tool lights only the half it'd go in (#569).
+      for (const id of w?.edges ?? [info.edge.id]) ghostEdge(id, info.edge.refusal || info.edge.erase ? HOVER.bad : HOVER.ok, room, hoverSpan(info.edge));
       return;
     }
     if (info.stack && info.check && p.kind === "slot") {
@@ -1742,7 +1743,11 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     if (!layout || !pointer || looking()) return null;
     rayAt(pointer.clientX, pointer.clientY);
     const p = pickRay(raycaster.ray);
-    if (tool?.kind === "corridor") return edgeHoverFor(layout, resources, tool, p, edgeAtPick(p), shift);
+    if (tool?.kind === "corridor") {
+      const edge = edgeAtPick(p);
+      const at = pickedPoint();
+      return edgeHoverFor(layout, resources, tool, p, edge, shift, edge && at ? alongEdge(edge, at.rings, at.turn) : 0.5);
+    }
     if (tool?.kind === "demolish") return demolishHoverFor(layout, resources, p, edgeNearPick(p));
     if (showsStackSpots()) {
       const ghost = stackHover(layout, resources, p, latest?.holeGates ?? []);
