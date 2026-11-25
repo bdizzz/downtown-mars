@@ -2,7 +2,7 @@
 
 Nov 25, 2026 · Bryon and Claude
 
-Ideas, not decisions. Nothing here is agreed or scheduled. This doc collects directions for the game past what `DESIGN.md` already plans: first what could sit on the **surface** round a hole, then **bigger directions** that would bring fresh mechanics and focuses into scope. Each one says what it adds, what it builds on in the game today, and what's still open. When one is picked up, it becomes a feature on the board (`/ingest`) and its plan goes in a `PLAN-M*.md`. This doc then keeps a line pointing there.
+Ideas, not decisions. Nothing here is agreed or scheduled. This doc collects directions for the game past what `DESIGN.md` already plans: first what could sit on the **surface** round a hole, then **bigger directions** that would bring fresh mechanics and focuses into scope, and last how **first person** could become useful and fun to spend time in. Each one says what it adds, what it builds on in the game today, and what's still open. When one is picked up, it becomes a feature on the board (`/ingest`) and its plan goes in a `PLAN-M*.md`. This doc then keeps a line pointing there.
 
 The test for every idea is the game's first pillar: **proximity creates effects.** The strongest ideas here push that rule somewhere new, not just add content.
 
@@ -142,3 +142,56 @@ The game already has, at least on paper, the network, culture drift, ordinances,
 **Geology as a map (1)** and **factions from proximity (3)** are the most "Downtown Mars." Both take the core rule, that proximity creates effects, and push it somewhere new: geology into the rock, factions into society. Neither needs a new layer of UI to make sense.
 
 **Open:** which way pulls harder: deeper systems inside one hole (1, 2, 3, 7), or the long arc across the planet (4, 5, 6, 8)?
+
+## First person
+
+Today first person is a lovely place to walk round (`GUIDE.md`, "3D view"): walk the tubes, corridors and rooms, take the stairs, grab a hot drink at a kitchenette, see furniture in finer detail, and watch the lights follow the clock. But nothing you do there feeds back into the game, so it's sightseeing. These ideas would give it a job of its own: the place to *understand* the hole, and perhaps a second way to play.
+
+### 1. You feel what the sim measures
+
+The numbers become senses.
+
+- **Noise you hear.** Walking past the smelter gets loud, and a home next to it sounds like it. Corridors go quiet, because they block noise in the sim too. It builds on the neighbor effects and on #193 (rooms you can hear in 3D).
+- **Smell and air you see.** A faint haze in rooms with poor air, a whiff of compost near the farms, and dust swirling near the airlock (airlock dust, M12).
+- **Comfort shows in the light.** Happy rooms are warm and lived in, with plants, posters and a little mess. Neglected rooms are dim, flickery and grimy (grime and condition are already drawn).
+
+You learn the hole by walking it: that one noisy corridor just *feels* wrong.
+
+### 2. People you can talk to
+
+- Walk up to anyone and press **F**: a short line from them, drawn from their real state ("The walk to the mine's killing me", "Love the new park"). Every colonist is a real person now (#521), so every line is true.
+- **Notables** have more to say, and sometimes give you small requests: citizen visits that happen on foot.
+- **People notice you:** a nod, a wave, or a crowd at a celebration.
+
+Most city builders tell you how people feel with a bar. Here you ask them. Walkers can already be clicked in 3D to open their person card (#528), so the lines would sit beside that.
+
+### 3. Things you can only do on foot
+
+- **Inspect and fix.** A broken machine sparks. Walk up, press F, and it's flagged first for maintenance (or you fix it yourself, slowly).
+- **Place small things by hand.** Plants, posters, benches and lamps that add a little comfort. It's decorating at human scale, while Build stays for rooms (Build is off while you walk).
+- **Take photos.** A camera mode whose snapshots go into a colony album, with dates. It also gives the life checks (first harvest, the first Martian adult, the third generation) a picture.
+
+### 4. Discovery and collecting
+
+- **Small finds.** A child's drawing on a wall, a note left in a locker, a crack in the rock where the drill struck microfossils. These come from real events, so each hole collects its own.
+- **Graffiti and murals** grow from the hole's culture: an industrial hole tags its walls, and a leisure hole paints murals. It builds on the culture sliders.
+- **Achievements on foot.** Walk from the surface to the deepest floor, or have a drink in every galley.
+
+### 5. Rhythm of the day
+
+- Ride the morning rush on the stairs, eat in a crowded canteen at lunch, and walk the empty night corridors with their night lights.
+- **Follow someone.** Pick a colonist and walk behind them through their day: home, commute, work, galley, park. It's the best way to see why a layout works or doesn't, and it uses the paths the sim already walks (`sim/paths.ts`).
+
+### 6. Atmosphere
+
+- **The shaft.** Stand at a gallery tube's glass and look up at the sky's disc. Dust storms darken it, and there's the dome once it's built.
+- **Footsteps** change with the floor finish (rock, marscrete, metal grating; M15).
+- **Echo** in big plazas, and the drill's rumble when it's working below you.
+
+### Picks
+
+**Talking to people (2)** and **follow someone (5).** Both use the individual colonists, both make first person the place to understand the hole, and neither needs much new art. **Sensing the sim (1)** is the natural next one, because it's mostly sound and light laid over data the game already has.
+
+**Open:**
+- What's first person for: a place to relax and admire what you've built, or a second way to *play*, with things only doable on foot (3)?
+- Should anything done on foot be faster or better than the same thing done from above, so walking pays, or only different?
