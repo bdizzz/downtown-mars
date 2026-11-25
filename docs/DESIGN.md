@@ -544,6 +544,8 @@ The game starts on the web, built so a later move to Godot costs as little as po
 
 There is no scripted ending: total population supported by a stable network is the high score, and bigger, more numerous holes raise it at the cost of a harder balance.
 
+Ideas for where the game could grow past this doc (the surface round a hole, and bigger directions such as geology, factions and terraforming) are in `DIRECTIONS.md`. None of them is decided.
+
 - [x] How deep do pools and notables go? Which traits does a notable have, and how many per hole?
 - [x] What exactly drives cultural drift numerically, and how fast?
 - [x] How are resources moved between holes: surface rovers, pipelines, something else? Can routes be disrupted?
