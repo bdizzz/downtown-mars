@@ -30,7 +30,7 @@ const GENERAL: [string, string][] = [
   ["Right-click", "Cancel the current tool"],
   ["WASD, Q E", "First person: walk (Shift runs) and turn"],
   ["R F", "First person: up and down the stairs; F at a kitchenette or serving counter grabs a hot drink"],
-  ["WASD", "Free view: pan across the floor (not in Build, where they're room keys); Reset camera (top left) goes back"],
+  ["WASD, Q E", "Free view: pan across the floor and turn round the hole (E right, Q left; Settings can swap them; not in Build, where they're room keys); Reset camera (top left) goes back"],
   ["↑ ↓ / Page Up, Page Down", "Floor up / down in the Plan and 3D views"],
 ];
 

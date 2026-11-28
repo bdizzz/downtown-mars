@@ -99,6 +99,8 @@ const CLICK_SLOP = 5;
 const CUTAWAY = { min: 25, max: 300, start: 70, lift: 0.25, margin: 1.1, zoomStep: 1.25 };
 /** Free view's WASD pan: metres a second as a share of the camera's distance (with a floor), and how far from the axis it may go, as a share of the rings' radius. */
 const ISO_PAN = { speed: 0.6, minSpeed: 12, reach: 1.3 };
+/** Free view's Q and E turn round the hole, in radians a second (as the Godot viewer's do). */
+const ISO_TURN = 1.2;
 /**
  * Free view: distance to the floor's centre (a multiple of the floor's radius to start), and how steeply it looks down.
  * Zooming out stops once every ring the hole can have (open or not) fits the view, with `pad` to spare.
@@ -723,6 +725,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   let graphics: Graphics = DEFAULT_GRAPHICS;
   // First person: how fast the mouse turns the head (settings), 1 = normal.
   let lookSpeed = 1;
+  /** Settings: Free view's Q and E turn the other way round. */
+  let reverseTurnKeys = false;
   /** Real time (ms) the sim last moved; walkers stop when the game is paused. */
   let lastTickChange = 0;
   let lastTick = -1;
@@ -1972,9 +1976,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   };
   document.addEventListener("pointerlockchange", onLockChange);
 
-  // ---- Free view: WASD pans across the ground (outside Build, whose room keys W, A, S and D are) ----
+  // ---- Free view: WASD pans across the ground and Q/E turn (outside Build, whose room keys they are) ----
   const isoHeld = new Set<string>();
-  const ISO_KEYS = new Set(["w", "a", "s", "d"]);
+  const ISO_KEYS = new Set(["w", "a", "s", "d", "q", "e"]);
   const onIsoKey = (e: KeyboardEvent) => {
     const k = e.key.toLowerCase();
     if (!ISO_KEYS.has(k)) return;
@@ -1990,12 +1994,15 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   window.addEventListener("keydown", onIsoKey);
   window.addEventListener("keyup", onIsoKey);
 
-  /** One frame's panning in Free view: returns true if the view moved. */
+  /** One frame's panning and turning in Free view: returns true if the view moved. */
   function isoFrame(dt: number): boolean {
     if (view.mode !== "iso" || !isoHeld.size) return false;
     const fwd = (isoHeld.has("w") ? 1 : 0) - (isoHeld.has("s") ? 1 : 0);
     const side = (isoHeld.has("d") ? 1 : 0) - (isoHeld.has("a") ? 1 : 0);
-    if (!fwd && !side) return false;
+    // E turns right and Q left, as in first person (the way dragging left does); the setting swaps them.
+    const turn = (isoHeld.has("q") ? 1 : 0) - (isoHeld.has("e") ? 1 : 0);
+    cam.theta += (reverseTurnKeys ? -turn : turn) * ISO_TURN * dt;
+    if (!fwd && !side) return turn !== 0;
     // Forward is the way the camera looks, flattened onto the ground; right is to its right.
     const [fx, fz] = [-Math.cos(cam.theta), -Math.sin(cam.theta)];
     const [rx, rz] = [-fz, fx];
@@ -3303,6 +3310,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     },
     setLookSpeed(speed) {
       lookSpeed = speed;
+    },
+    setReverseTurnKeys(on) {
+      reverseTurnKeys = on;
     },
     setColorBlind(on) {
       heat = on ? HEAT.colorBlind : HEAT.normal;

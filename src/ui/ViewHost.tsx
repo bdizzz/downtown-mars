@@ -36,6 +36,7 @@ interface Props {
   view3d: View3d;
   /** First person: how fast the mouse turns the head (settings). */
   lookSpeed: number;
+  reverseTurnKeys: boolean;
   /** Build mode is open. */
   building: boolean;
   /** The chosen view couldn't start (e.g. no WebGL for 3D). */
@@ -62,13 +63,14 @@ const CREATE: Record<Props["mode"], (host: HTMLElement, opts: StageOptions) => P
 };
 
 /** Hosts whichever view is chosen, and hands it the same state and callbacks either way. */
-export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onPerson, onInvalid, overlay, colorBlind, mode, floor, proposal, onPropose, warning, onConfirmBuild, graphics, view3d, building, onViewError, onWalking, onMouseLook, onCutAngle, lookSpeed, showcase = false, spotlight = null, holdCamera = false }: Props) {
+export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onPerson, onInvalid, overlay, colorBlind, mode, floor, proposal, onPropose, warning, onConfirmBuild, graphics, view3d, building, onViewError, onWalking, onMouseLook, onCutAngle, lookSpeed, reverseTurnKeys, showcase = false, spotlight = null, holdCamera = false }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Stage | null>(null);
   // Latest props, read by the stage's callbacks without recreating it.
   const props = useRef({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onPerson, onInvalid, overlay, colorBlind, graphics, view3d, building, floor, proposal, onPropose, warning, onConfirmBuild, onViewError, onWalking, onMouseLook, onCutAngle });
   props.current = { snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onPerson, onInvalid, overlay, colorBlind, graphics, view3d, building, floor, proposal, onPropose, warning, onConfirmBuild, onViewError, onWalking, onMouseLook, onCutAngle };
   const lookSpeedRef = useRef(lookSpeed);
+  const reverseTurnRef = useRef(reverseTurnKeys);
   const showcaseRef = useRef(showcase);
   const spotlightRef = useRef(spotlight);
   spotlightRef.current = spotlight;
@@ -99,6 +101,7 @@ export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selecte
       stage.setGraphics(props.current.graphics);
       stage.setView3d(props.current.view3d);
       stage.setLookSpeed?.(lookSpeedRef.current);
+      stage.setReverseTurnKeys?.(reverseTurnRef.current);
       stage.setBuildMode(props.current.building);
       stage.setFloor(props.current.floor);
       stage.setProposal(props.current.proposal);
@@ -159,6 +162,10 @@ export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selecte
     lookSpeedRef.current = lookSpeed;
     stageRef.current?.setLookSpeed?.(lookSpeed);
   }, [lookSpeed]);
+  useEffect(() => {
+    reverseTurnRef.current = reverseTurnKeys;
+    stageRef.current?.setReverseTurnKeys?.(reverseTurnKeys);
+  }, [reverseTurnKeys]);
   useEffect(() => {
     stageRef.current?.setBuildMode(building);
   }, [building]);
