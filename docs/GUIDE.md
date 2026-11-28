@@ -191,7 +191,7 @@ Water goes round in a loop. Everything that uses clean water (people, galleys, f
 - **Ventilation hubs** (Build → Utilities) scrub and freshen the air for the rooms along the network from them, and parks help a little.
 - Smell travels the same way, and leaks into the room next door as well.
 - The entrance's airlock lets in Mars dust, fouling the air down the corridors from it, twice as badly in a dust storm.
-- **Bulkheads** (Build → Access → Bulkhead: click a corridor, 2 metal) seal a corridor against air and smell; people pass through. Only the half of the segment under the pointer lights up, and the bulkhead goes in that half's middle, a quarter or three quarters along. Where it stands decides which rooms it protects: a door on the far side of it is cut off from that end, a door on the near side shares its air. Click the other half to move one, free.
+- **Bulkheads** (Build → Access → Bulkhead: click a corridor, 2 metal) seal a corridor against air and smell; people pass through. Only the half of the segment under the pointer lights up, and the bulkhead goes in that half's middle, a quarter or three quarters along. Where it stands decides which rooms it protects: a door on the far side of it is cut off from that end, a door on the near side shares its air. Click the other half to move one, free. Each is a submarine-style hatch: open in Free view; in first person it's shut, and swings open (the wheel spins, a clank and a hiss) as you walk up to it, closing behind you once you're away.
 - **Heavy industry breathes out CO2** too: a smelter about as much as three people, a silicon refinery two, a glassworks, brickworks or concrete plant one and a half. A busy industrial hole needs more scrubbers.
 
 ## Temperature
