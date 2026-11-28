@@ -228,6 +228,10 @@ export function updateHappiness(state: SimState, cfg: SimConfig, settle = false)
   syncColonists(state, cfg);
   const c = state.colonists!;
   // Seats, restrooms and care within reach, shared out by where people lived at the last update.
+  // A home merged into its neighbour or demolished since then has no one to share out to (#612):
+  // left in, its room lookup threw every tick, and the steps after this one (history, events) never ran again.
+  const standing = new Set(state.layout.rooms.map((r) => r.id));
+  state.happiness.pools = state.happiness.pools.filter((p) => standing.has(p.roomId));
   updateDining(state, cfg);
   updateSanitation(state);
   updateCare(state);

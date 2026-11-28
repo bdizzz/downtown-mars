@@ -176,9 +176,8 @@ export function updateSanitation(state: SimState): void {
     offers.push({ id: r.id, capacity, reachM: reachOf(r.type) * STEP_M });
   }
   const byId = new Map(state.layout.rooms.map((r) => [r.id, r]));
-  // A home demolished since the last happiness update has no room any more (#615's save): skip it.
-  const pools = state.happiness.pools.filter((p) => p.residents > 0 && byId.has(p.roomId));
-  const own = pools.filter((p) => roomDef(byId.get(p.roomId)!.type).ownBathroom);
+  const pools = state.happiness.pools.filter((p) => p.residents > 0);
+  const own = pools.filter((p) => roomDef(byId.get(p.roomId)?.type ?? "").ownBathroom);
   const homes = pools.filter((p) => !own.includes(p)).map((p) => ({ id: p.roomId, need: p.residents }));
   const { got, gave } = assignNearest(homes, offers, (id) => walkFrom(state.layout, id));
   const byHome: Record<number, number> = {};

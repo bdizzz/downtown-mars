@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { config } from "../src/sim/config";
 import { createInitialState } from "../src/sim/state";
@@ -6,6 +7,7 @@ import { seriesIds, VITALS } from "../src/sim/history";
 import { deserialize, serialize } from "../src/sim/save";
 import { createWorld } from "../src/sim/world";
 import { stepWorld } from "../src/sim/worldstep";
+import { demolishRoom } from "../src/sim/placement";
 import { niceScale, perDay, points } from "../src/ui/trends";
 
 // Resources and vital signs over time, for the charts.
@@ -78,5 +80,34 @@ describe("trend data", () => {
     const flat = niceScale(5, 5);
     expect(flat.lo).toBeLessThan(5);
     expect(flat.hi).toBeGreaterThan(5);
+  });
+});
+
+describe("history after a home goes (#612)", () => {
+  it("keeps sampling once a lived-in home is demolished", () => {
+    const r = deserialize(readFileSync("public/dev-save-early.json", "utf8"));
+    if (!r.ok) throw new Error(r.reason);
+    const s = r.world.holes[0]!;
+    for (let i = 0; i < tpd; i++) stepWorld(r.world, config);
+    const home = s.happiness.pools.find((p) => p.residents > 0 && demolishRoom(s.layout, p.roomId).ok);
+    expect(home).toBeDefined();
+    for (let i = 0; i < tpd; i++) stepWorld(r.world, config);
+    expect(s.history!.last).toBe(s.tick);
+    expect(s.happiness.pools.some((p) => p.roomId === home!.roomId)).toBe(false);
+  });
+});
+
+describe("a gap in the history (#612)", () => {
+  it("bridges missed days and starts the hours afresh, so the charts' days stay in place", () => {
+    const s = run(3);
+    s.tick += 10 * tpd + 30; // ten days and a bit with no samples, as a save stuck before the fix
+    for (let i = 0; i < 2 * tpd; i++) step(s, config);
+    const h = s.history!;
+    const days = Math.floor(s.tick / tpd);
+    expect(h.dailyLast).toBe(days * tpd);
+    // One value a day, for every day, so counting back from the newest lands each on its own day.
+    for (const id of seriesIds()) expect(h.daily[id], id).toHaveLength(days);
+    for (const id of seriesIds()) expect(h.hourly[id]!.length, id).toBeLessThanOrEqual(2 * perHour);
+    expect(h.last).toBe(s.tick);
   });
 });
