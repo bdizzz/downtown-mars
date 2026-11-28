@@ -68,7 +68,7 @@
     "ledgerDays": 4,
     "nominalSlots": { "S": 1, "M": 2, "L": 4, "H": 8 },
     "waterReturns": { "grayWater": 1 },
-    "_note": "batteryEfficiency: share of the spare power sent into the batteries that they keep; rooms using power straight from the arrays lose nothing (#609). How fast they take it is each battery bank's chargePerDay (rooms.json).",
+    "_note": "batteryEfficiency: share of the spare power sent into the batteries that they keep; rooms using power straight from the arrays lose nothing (#609). How fast they take it is the charging bandwidth: each solar array's chargePerDay (rooms.json).",
     "batteryEfficiency": 0.5
   },
   "air": {

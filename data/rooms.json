@@ -62,9 +62,9 @@
       "staff": 0,
       "uses": {},
       "makes": {
-        "power": 20
+        "power": 30
       },
-      "chargePerDay": 15,
+      "chargePerDay": 25,
       "effects": [],
       "cost": {
         "metal": 10,
@@ -417,7 +417,7 @@
         "co2": 2
       },
       "makes": {
-        "rawFood": 12,
+        "rawFood": 16,
         "o2": 2
       },
       "growsCrops": true,

@@ -80,7 +80,7 @@ Every housing tier comes in four sizes. Bigger buildings fit more residents per 
 
 | Room | Size | Staff | Uses | Makes | Neighbor effects | Build cost | Unlock |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Farm ★ | L | 6 | Water 4, soil 2, power 3, CO2 2 | Raw food 12 (potatoes), O2 2 | Smell −1 r1 | R 30, M 10, Mc 2 | Start |
+| Farm ★ | L | 6 | Water 4, soil 2, power 3, CO2 2 | Raw food 16 (potatoes), O2 2 | Smell −1 r1 | R 30, M 10, Mc 2 | Start |
 | Farm atrium | H | 20 | Water 12, soil 6, power 8, CO2 6 | Raw food 30, O2 6 | Comfort +2 r2 | B 40, M 30, Mc 6, E 4 | Depth 10 floors |
 | Cultured meat lab | S | 2 | Feedstock crops 3 (soy or algae), water 2, power 7 | Raw protein 8 (meat group; comfort bonus in diet) | — (clean and quiet) | M 15, Mc 3, E 5 | Research lab |
 | Kitchen | M | 4 | Raw food 40, water 3, power 2 | Cooked food 40, organic waste 3 | Smell −1 r1 | R 15, M 5, Mc 1 | Start |
@@ -94,14 +94,14 @@ Each farm grows one crop at a time, chosen by the player. Some feed people, othe
 
 | Crop | Use | Yield per day (L farm) | Water | Power | Grow time | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| Potatoes | Food: staple | 12 | 4 | 3 | Medium | Reliable, high calorie |
-| Wheat | Food: staple | 9 | 3 | 3 | Long | Stores well; bread boosts comfort |
-| Barley | Food: staple; brewing | 9 | 3 | 3 | Medium | Brews beer; also a staple grain |
-| Soybeans | Food: protein | 8 | 4 | 3 | Medium | Also yields some oil |
-| Leafy greens | Food: produce | 7 | 3 | 2 | Short | Health +1 for those who eat it |
+| Potatoes | Food: staple | 16 | 4 | 3 | Medium | Reliable, high calorie |
+| Wheat | Food: staple | 12 | 3 | 3 | Long | Stores well; bread boosts comfort |
+| Barley | Food: staple; brewing | 12 | 3 | 3 | Medium | Brews beer; also a staple grain |
+| Soybeans | Food: protein | 11 | 4 | 3 | Medium | Also yields some oil |
+| Leafy greens | Food: produce | 9.5 | 3 | 2 | Short | Health +1 for those who eat it |
 | Fruit | Food: produce | 5 | 5 | 4 | Long | Comfort bonus; prized export |
-| Mushrooms | Food: protein | 8 | 2 | 1 | Short | Needs no light; uses organic waste; ideal for deep floors |
-| Algae | Food: staple | 14 | 6 | 2 | Short | Makes extra O2; tastes bland, comfort −1 if a diet relies on it |
+| Mushrooms | Food: protein | 11 | 2 | 1 | Short | Needs no light; uses organic waste; ideal for deep floors |
+| Algae | Food: staple | 19 | 6 | 2 | Short | Makes extra O2; tastes bland, comfort −1 if a diet relies on it |
 | Fiber hemp | Material: fiber | 6 | 4 | 3 | Medium | Feeds textile mills and fibre-composite floor panels (M15) |
 | Oilseed | Material: bio-oil | 5 | 3 | 3 | Medium | Feeds chemical plants as a plastics alternative |
 | Herbs | Material: medicine | 3 | 2 | 2 | Short | Supplies clinics; raises their effectiveness |
@@ -110,7 +110,7 @@ Each farm grows one crop at a time, chosen by the player. Some feed people, othe
 
 **Diet variety:** kitchens combine crops into meals. Colonists want staples, protein and produce; a varied diet gives health and comfort bonuses, and a monotonous one gives penalties.
 
-**As built:** potatoes, soybeans, wheat, barley, leafy greens, mushrooms, algae and fiber hemp (`data/crops.json`). A crop's `makes` names what it yields when that isn't raw food: hemp makes `fiber`, a dry good kept in storage like other materials. **Grow time** (#375): each crop has `growMonths` (greens and algae 1.5, mushrooms 2, potatoes and barley 2.5, wheat and soybeans 3, hemp 4); the yield above is the monthly average, and it comes in whole harvests, yield × grow time × a long-grow bonus (0 at 1.5 months to +20% at 4). Switching crops costs the cycle under way. **Diet variety** is built as meal quality by the number of crops (food types) in each meal, not by staple/protein/produce groups; the per-crop bonuses (bread, greens, algae's blandness) aren't.
+**As built:** potatoes, soybeans, wheat, barley, leafy greens, mushrooms, algae and fiber hemp (`data/crops.json`). A crop's `makes` names what it yields when that isn't raw food: hemp makes `fiber`, a dry good kept in storage like other materials. **Grow time** (#375): each crop has `growMonths` (greens and algae 1.5, mushrooms 2, potatoes and barley 2.5, wheat and soybeans 3, hemp 4); the yield above is the monthly average, and it comes in whole harvests, yield × grow time × a long-grow bonus (0 at 1.5 months to +20% at 4). Switching crops costs the cycle under way. The food yields went up about 35% in #616, so 7 mixed farms feed about 95. **Diet variety** is built as meal quality by the number of crops (food types) in each meal, not by staple/protein/produce groups; the per-crop bonuses (bread, greens, algae's blandness) aren't.
 
 ## Water and air
 
@@ -141,7 +141,7 @@ Each farm grows one crop at a time, chosen by the player. Some feed people, othe
 
 | Room | Size | Staff | Uses | Makes | Neighbor effects | Build cost | Unlock |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Solar array | Surface | 1 | — | Power 20 by day, none at night (10 on average), less in storms; adds 15 a month of charging bandwidth (#609) | — | M 10, E 4 | Start |
+| Solar array | Surface | 1 | — | Power 30 by day, none at night (15 on average), half in storms; adds 25 a month of charging bandwidth (#609, #615) | — | M 10, E 4 | Start |
 | Battery bank | S | 0 | — | Stores 50 power; keeps half of what charges it, as fast as the arrays' charging bandwidth allows (#609) | — | M 5, E 5 | Start |
 | Geothermal plant | L | 3 | Water 2 | Power 25 | Noise −1 r1, heat +1 r1 | M 30, Mc 8, E 4 | A geothermal pocket at the bottom of the hole (#390): the `geothermal` gate, the only way |
 | Reactor | H | 8 | Water 4 | Power 100 | Noise −2 r2, comfort −2 r3 | M 60, Mc 15, E 15 | Mid-game milestone |
