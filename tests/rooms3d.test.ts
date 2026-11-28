@@ -372,6 +372,32 @@ describe("doors and windows", () => {
   });
 });
 
+describe("a one-slot room's doorway (#613)", () => {
+  it("leaves nothing standing in the doorway where its wall's stretches meet", () => {
+    const l = createLayout(createHole(10, 3, 3, config.geometry));
+    for (const e of galleryEdges(l.hole, 1)) l.corridors[e.id] = "gallery";
+    const r = placeRoom(l, "studio", ring(1, 1, 3));
+    const room = l.rooms.find((x) => x.id === r.id)!;
+    const [door] = doorways(l, room);
+    expect(door).toMatchObject({ side: "inner" });
+    const base = floorSpan(1)[0];
+    for (const solid of [false, true]) {
+      const p = roomGeometry(l, room.cells, undefined, true, false, openingsOf(l, room), [], undefined, solid).getAttribute("position");
+      // No triangle in the doorway's wall wholly inside its width, standing up off the floor.
+      let inside = 0;
+      for (let i = 0; i < p.count; i += 3) {
+        const k = [0, 1, 2];
+        const as = k.map((j) => Math.atan2(p.getZ(i + j), p.getX(i + j)) - door!.angle);
+        const ys = k.map((j) => p.getY(i + j));
+        const rs = k.map((j) => Math.hypot(p.getX(i + j), p.getZ(i + j)));
+        const near = rs.every((x) => Math.abs(x - door!.r) < 1);
+        if (near && as.every((a) => Math.abs(a) < door!.half * 0.8) && Math.max(...ys) > base + 0.3 && Math.min(...ys) < base + DOOR.height - 0.1) inside++;
+      }
+      expect(inside).toBe(0);
+    }
+  });
+});
+
 describe("corridor corners", () => {
   it("the room on the outer corner of a turn is notched, so the joint doesn't overlap it", () => {
     const l = createLayout(createHole(10, 3, 3, config.geometry));
