@@ -276,7 +276,7 @@ export function stepEconomy(state: SimState, cfg: SimConfig): void {
   reconcileFood(state);
 }
 
-/** The hole's charging bandwidth: power a day it can pump from the panels into the batteries. Every working battery bank and solar array adds its share. */
+/** The hole's charging bandwidth: power a day it can pump from the panels into the batteries. Every working solar array adds its share. */
 export function chargeRate(state: SimState): number {
   let rate = 0;
   for (const room of state.layout.rooms) {
@@ -541,7 +541,7 @@ export function updateRates(state: SimState, before: Record<string, number>, cfg
 export interface PowerFlow {
   made: number;
   used: number;
-  /** The charging bandwidth: what can go into the batteries a day, from all the batteries and arrays together. */
+  /** The charging bandwidth: what can go into the batteries a day, from all the arrays together. */
   chargeRate: number;
   /** What reaches them a day, after the rate cap and charging's loss; 0 while they're full or nothing is spare. */
   charging: number;

@@ -5,12 +5,12 @@ import { roomDef } from "../src/sim/rooms";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
 
-// Batteries charge only as fast as the charging bandwidth (from batteries and arrays) allows, and keep half (#609).
+// Batteries charge only as fast as the charging bandwidth (from the solar arrays) allows, and keep half (#609).
 const config: SimConfig = { ...baseConfig, earth: { ...baseConfig.earth, firstDropDay: 1e6 } };
 const dt = 1 / config.ticksPerDay;
 const battery = roomDef("battery_bank");
 const solar = roomDef("solar_array");
-const rates = { battery: battery.chargePerDay!, solar: solar.chargePerDay! };
+const rate = solar.chargePerDay!;
 
 function fresh(): SimState {
   const s = createInitialState(config);
@@ -26,8 +26,7 @@ function tick(s: SimState) {
 }
 
 afterEach(() => {
-  battery.chargePerDay = rates.battery;
-  solar.chargePerDay = rates.solar;
+  solar.chargePerDay = rate;
 });
 
 describe("battery charging (#609)", () => {
@@ -38,29 +37,29 @@ describe("battery charging (#609)", () => {
     expect(charging(-5, 100, config)).toBe(0);
   });
 
-  it("the charging bandwidth grows with every working battery bank and solar array", () => {
+  it("the charging bandwidth grows with every working solar array, not with batteries", () => {
     const s = fresh();
-    const kit = rates.battery + 2 * rates.solar; // the kit's battery and two arrays
-    expect(chargeRate(s)).toBe(kit);
+    expect(battery.chargePerDay).toBeUndefined();
+    expect(chargeRate(s)).toBe(2 * rate); // the kit's two arrays
     const bank = s.layout.rooms.find((r) => r.type === "battery_bank")!;
     const array = s.layout.rooms.find((r) => r.type === "solar_array")!;
     s.layout.rooms.push({ ...bank, id: 9998 }, { ...array, id: 9999 });
-    expect(chargeRate(s)).toBe(kit + rates.battery + rates.solar);
+    expect(chargeRate(s)).toBe(3 * rate);
     s.layout.rooms[s.layout.rooms.length - 1]!.building = { progress: 0 } as never;
-    expect(chargeRate(s)).toBe(kit + rates.battery);
+    expect(chargeRate(s)).toBe(2 * rate);
   });
 
-  it("stores half the spare solar by day", () => {
+  it("stores half of the spare solar that fits through the bandwidth by day", () => {
     const s = fresh();
     const { gained, flow } = tick(s);
     expect(flow.made - flow.used).toBeGreaterThan(10);
-    expect(gained).toBeCloseTo((flow.made - flow.used) * 0.5 * dt, 6);
-    expect(flow.charging).toBeCloseTo((flow.made - flow.used) * 0.5, 6);
+    const into = Math.min(flow.made - flow.used, flow.chargeRate);
+    expect(gained).toBeCloseTo(into * 0.5 * dt, 6);
+    expect(flow.charging).toBeCloseTo(into * 0.5, 6);
   });
 
   it("stores no faster than the charging bandwidth, however much is spare", () => {
-    battery.chargePerDay = 1;
-    solar.chargePerDay = 2;
+    solar.chargePerDay = 2.5;
     const s = fresh();
     const { gained, flow } = tick(s);
     expect(flow.made - flow.used).toBeGreaterThan(5);
@@ -83,7 +82,7 @@ describe("battery charging (#609)", () => {
 });
 
 describe("what the player reads about charging (#609)", () => {
-  it("the Power cell and the battery's panel say how much is charging, of how much spare, and the loss", async () => {
+  it("the Power cell and an array's panel say how much is charging, of how much spare, and the loss", async () => {
     const { makeSnapshot } = await import("../src/sim/snapshot");
     const { barItems } = await import("../src/view/hudItems");
     const { panelRows } = await import("../src/view/roomPanel");
@@ -93,9 +92,9 @@ describe("what the player reads about charging (#609)", () => {
     const cell = barItems(snap).flat().find((b) => b.id === "res:power:flow")!;
     const note = cell.notes!.find((n) => n.startsWith("Charging"))!;
     expect(note).toMatch(/^Charging \S+ a month of \S+ spare(; only \S+ fits through the charging lines)?, half lost to charging$/);
-    const bank = s.layout.rooms.find((r) => r.type === "battery_bank")!;
-    const row = panelRows(snap, bank).before.find((r) => r.k === "Charging")!;
-    expect(row.text).toBe(`adds ${rates.battery}/month of bandwidth, half lost`);
+    const array = s.layout.rooms.find((r) => r.type === "solar_array")!;
+    const row = panelRows(snap, array).before.find((r) => r.k === "Charging")!;
+    expect(row.text).toBe(`adds ${rate}/month of bandwidth, half lost`);
     expect(row.tip).toBe(note);
   });
 });

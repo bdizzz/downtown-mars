@@ -32,7 +32,7 @@ export interface RoomDef {
   uses: Record<string, number>;
   makes: Record<string, number>;
   stores?: Record<string, number>;
-  /** Charging bandwidth this room adds (#609): power a day the hole can pump from its panels into its batteries. Battery banks and solar arrays both add to it; config's batteryEfficiency of what goes in is kept. */
+  /** Charging bandwidth this room adds (#609): power a day the hole can pump from its panels into its batteries. Solar arrays add to it; config's batteryEfficiency of what goes in is kept. */
   chargePerDay?: number;
   houses?: number;
   effects: EffectDef[];
