@@ -130,6 +130,8 @@ export interface Stage {
   setGraphics(g: Graphics): void;
   /** First person: how fast the mouse turns the head, 1 = normal (views without first person ignore it). */
   setLookSpeed?(speed: number): void;
+  /** Free view: Q and E turn the other way round (views without Free view ignore it). */
+  setReverseTurnKeys?(on: boolean): void;
   /** Is Build mode open? Outside it, bare rock doesn't light up under the pointer. */
   setBuildMode(on: boolean): void;
   /** The 3D camera and see-through toggles (the 2D views ignore it). */

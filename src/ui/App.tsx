@@ -994,6 +994,7 @@ export function App() {
             view3d={titling && !titleStill ? titleView3d : settings.view3d}
             showcase={titling && !titleStill}
             lookSpeed={settings.lookSpeed}
+            reverseTurnKeys={settings.reverseTurnKeys}
             onCutAngle={(cutAngle) => updateSettings({ view3d: { ...settings.view3d, cutAngle } })}
             building={mode === "build"}
             onViewError={(message) => {

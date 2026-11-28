@@ -723,6 +723,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   let graphics: Graphics = DEFAULT_GRAPHICS;
   // First person: how fast the mouse turns the head (settings), 1 = normal.
   let lookSpeed = 1;
+  /** Settings: Free view's Q and E turn the other way round. */
+  let reverseTurnKeys = false;
   /** Real time (ms) the sim last moved; walkers stop when the game is paused. */
   let lastTickChange = 0;
   let lastTick = -1;
@@ -1993,9 +1995,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     if (view.mode !== "iso" || !isoHeld.size) return false;
     const fwd = (isoHeld.has("w") ? 1 : 0) - (isoHeld.has("s") ? 1 : 0);
     const side = (isoHeld.has("d") ? 1 : 0) - (isoHeld.has("a") ? 1 : 0);
-    // E turns the way dragging right does, Q the other.
-    const turn = (isoHeld.has("e") ? 1 : 0) - (isoHeld.has("q") ? 1 : 0);
-    cam.theta += turn * ISO_TURN * dt;
+    // E turns right and Q left, as in first person (the way dragging left does); the setting swaps them.
+    const turn = (isoHeld.has("q") ? 1 : 0) - (isoHeld.has("e") ? 1 : 0);
+    cam.theta += (reverseTurnKeys ? -turn : turn) * ISO_TURN * dt;
     if (!fwd && !side) return turn !== 0;
     // Forward is the way the camera looks, flattened onto the ground; right is to its right.
     const [fx, fz] = [-Math.cos(cam.theta), -Math.sin(cam.theta)];
@@ -3300,6 +3302,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     },
     setLookSpeed(speed) {
       lookSpeed = speed;
+    },
+    setReverseTurnKeys(on) {
+      reverseTurnKeys = on;
     },
     setColorBlind(on) {
       heat = on ? HEAT.colorBlind : HEAT.normal;

@@ -45,6 +45,8 @@ export interface Settings {
   floorHoverPreview: boolean;
   /** First person: how fast the mouse turns the head, 1 = normal (WALK in stage3d.ts, the same in Godot). */
   lookSpeed: number;
+  /** Free view: Q and E turn the other way (E left, Q right); off, they turn as in first person. */
+  reverseTurnKeys: boolean;
   /** The installed app on Android: hide the system bar (systemBar.ts). */
   fullscreen: boolean;
   /** Which view the player last used: the unrolled wall, one floor from above, or 3D. */
@@ -74,6 +76,7 @@ export const DEFAULT_SETTINGS: Settings = {
   allResources: defaultOf("allResources", "boolean"),
   floorHoverPreview: defaultOf("floorHoverPreview", "boolean"),
   lookSpeed: defaultOf("lookSpeed", "number"),
+  reverseTurnKeys: defaultOf("reverseTurnKeys", "boolean"),
   fullscreen: defaultOf("fullscreen", "boolean"),
   view: "3d",
   graphics: DEFAULT_GRAPHICS,
