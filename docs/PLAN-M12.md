@@ -39,7 +39,7 @@ Asked for by Bryon, Sep 30, 2026 ("let's do all that", after PLAN-M11's "not bui
 - `layout.bulkheads` (edge id → true); `setBulkhead { edges, on }`: fitting one costs `corridors.bulkhead.cost` (2 metal), taking it out is free. Only on a built corridor segment, never a gallery tube (`bulkheadRefusal`). `recomputeAccess` drops any whose corridor is gone, so filling a corridor in takes its bulkhead with it.
 - In the network graph a corridor segment with a bulkhead is airtight: air routes skip it, people walk through.
 - **Tool:** the corridor tool's **Bulkhead** button (hazard-striped chip) turns it into the bulkhead tool: click a corridor to fit one, Shift-click or Erase to take it out. No dragging. The status line says what a click will do.
-- **Views:** a hazard-striped bar across the corridor in 2D and plan; in 3D a door frame with a sealed door and an orange band, at the segment's middle.
+- **Views:** a hazard-striped bar across the corridor in 2D and plan; in 3D a door frame with a sealed door and an orange band, at the segment's middle. Later (#569) a quarter or three quarters along; then (#614) a submarine hatch in a steel wall, open in Free view and swinging open as you walk up to it in first person (`render3d/bulkhead3d.ts`).
 
 **Step 3, dust through the airlock:**
 - The entrance and the cargo elevator (rooms that open onto the surface) have air quality −1 r1, spread by the airborne rules: the rooms along the network from them get the dust, fading.

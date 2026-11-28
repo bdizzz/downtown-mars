@@ -94,6 +94,9 @@ export function stepHistory(state: SimState, cfg: SimConfig): void {
   const hist = (state.history ??= createHistory(cfg));
   const now = sample(state, cfg);
   const keepHours = h.recentDays * (cfg.ticksPerDay / h.everyTicks);
+  // Samples were missed (a step threw every tick for months, #612): the charts count back from the newest
+  // sample, so what's on either side of the gap must not be drawn side by side.
+  if (hist.last >= 0 && state.tick - hist.last > h.everyTicks) bridgeGap(hist);
   // A series that's new since the history began (a resource added to the game) starts at zero; a cause, with a gap.
   const length = Math.max(0, ...Object.values(hist.hourly).map((l) => l.length));
   for (const [id, v] of Object.entries(now)) {
@@ -106,8 +109,13 @@ export function stepHistory(state: SimState, cfg: SimConfig): void {
   // End of a day: its average joins the daily series.
   if (state.tick % cfg.ticksPerDay === 0 && hist.accCount > 0) {
     const days = Math.max(0, ...Object.values(hist.daily).map((l) => l.length));
+    const missed = hist.dailyLast >= 0 ? Math.max(0, Math.round((state.tick - hist.dailyLast) / cfg.ticksPerDay) - 1) : 0;
     for (const id of Object.keys(now)) {
       if (!hist.daily[id]) hist.daily[id] = Array(days).fill(GAPPED.has(id) ? NaN : 0);
+      // Days that went unrecorded: a straight line from the last one to this one.
+      const from = hist.daily[id]!.at(-1);
+      const to = (hist.acc[id] ?? 0) / hist.accCount;
+      for (let d = 1; d <= missed; d++) push(hist.daily, id, from === undefined || !Number.isFinite(from) ? to : from + ((to - from) * d) / (missed + 1), h.maxDays);
       push(hist.daily, id, (hist.acc[id] ?? 0) / hist.accCount, h.maxDays);
     }
     hist.acc = {};
@@ -115,4 +123,11 @@ export function stepHistory(state: SimState, cfg: SimConfig): void {
     hist.dailyLast = state.tick;
   }
   hist.version++;
+}
+
+/** Forget the hours before a gap in the samples (they'd be drawn as just before it), and the part-day they began. */
+function bridgeGap(hist: History): void {
+  for (const id of Object.keys(hist.hourly)) hist.hourly[id] = [];
+  hist.acc = {};
+  hist.accCount = 0;
 }
