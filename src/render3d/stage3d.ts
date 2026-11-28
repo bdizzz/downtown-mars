@@ -67,6 +67,8 @@ import { isTouch, LongPress, TAP_SLOP, TapToAim, Touches, touchFirst, type Gestu
 import { createWalkPad } from "./joystick";
 import { drinkHere, footing, footingNear, stairLift, stairsHere, step as walkStep } from "../view/walk";
 import { createDrink } from "./drink3d";
+import { createHatches } from "./bulkhead3d";
+import { cue } from "../audio/cues";
 import { fpLoaded, loadFpModels, setModelsEnabled } from "../view/models";
 import { circleRadius, outerRadius as holeOuterRadius, ringRadii, ringsAt } from "../sim/geometry";
 
@@ -1846,6 +1848,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   );
   // A hot drink to carry round (T-139): grabbed at a kitchenette or serving counter, kept until you leave first person.
   const drink = createDrink(camera);
+  // The bulkheads' hatches (#614): open in Free view; in first person, shut until you come near.
+  const hatches = createHatches((opening) => cue(opening ? "hatchOpened" : "hatchClosed"));
   let walked = 0;
   const canDrink = () => !drink.held && !!layout && view.mode === "walk" && drinkHere(layout, walker.floor, walker.x, walker.z, walker.yaw);
   function grabDrink(): void {
@@ -2532,6 +2536,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     }
     if (isoFrame(dt)) applyCamera();
     if (topFrame(dt)) applyCamera();
+    if (hatches.step(dt, view.mode === "walk" ? walker : null)) dirty = true;
     if (showcase.on) {
       frameShowcase();
       if (!showcase.still) cam.theta += SHOWCASE.turn * dt;
@@ -2791,6 +2796,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
           },
           // First person's position and heading, to put a walker somewhere.
           walker,
+          // The bulkheads' hatches (#614), where they stand.
+          hatches: () => hatches.spots.map(({ id, floor, x, z }) => ({ id, floor, x, z })),
           // The orbit of Free view and the cutaway, to sweep the camera round.
           cam,
           // Hold the rooms' lights at an hour (0..24; null: the clock's), to see their modes (#305).
@@ -3016,6 +3023,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         // The cutaway's cut face follows what's dug.
         updateSection();
         furnitureGroups = [];
+        hatches.collect(layoutGroup);
         layoutGroup.traverse((o) => {
           if (o.userData.outerCap) (o as THREE.Mesh).material = outerCapMaterial((o as THREE.Mesh).material as THREE.MeshStandardMaterial);
           if (o.userData.furniture) furnitureGroups.push(o);

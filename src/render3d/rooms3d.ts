@@ -25,6 +25,7 @@ import { roomLook, type Finish } from "../view/roomFinish";
 import { flooringOf } from "../sim/materials";
 import { lampsOf, lightPools } from "./lights3d";
 import { withCondensation } from "./details3d";
+import { HATCH, hatchGroup, type HatchMaterials } from "./bulkhead3d";
 import { spotsOf, type RoomSpots } from "./people3d";
 
 /** Room categories where people sit about (the rest only have staff at their posts, and beds). */
@@ -1008,7 +1009,8 @@ function solidWalls(pos: number[], s: SolidCell): void {
           if (a1 - a0 < 1e-9) continue;
           const hb = Math.max(h.y0, floorBase);
           const ht = Math.min(h.y1, y1);
-          for (const a of [a0, a1]) quad(pos, at(lo, a, hb), at(hi, a, hb), at(hi, a, ht), at(lo, a, ht), follow);
+          // A side only where the opening really ends: a wall built in stretches can meet mid-doorway (#613).
+          for (const a of [a0 > h.a0 + 1e-9 ? null : a0, a1 < h.a1 - 1e-9 ? null : a1]) if (a !== null) quad(pos, at(lo, a, hb), at(hi, a, hb), at(hi, a, ht), at(lo, a, ht), follow);
           if (hb > y0 + 1e-6) arcBand(pos, lo, [a0, a1], hi, [a0, a1], hb, follow);
           if (ht < y1 - 1e-6) arcBand(pos, lo, [a0, a1], hi, [a0, a1], ht, follow);
         }
@@ -1021,7 +1023,7 @@ function solidWalls(pos: number[], s: SolidCell): void {
         if (b - a > 1e-6) curvedFace(parts.glass, rGlass, a, b, pane.y0, pane.y1, glassCut(st));
       }
       const door = holes.door;
-      if (door && door.s > rangeIn[0] && door.s < rangeIn[1]) {
+      if (door && door.s >= rangeIn[0] && door.s < rangeIn[1]) {
         const [d0, d1] = [door.s - door.half, door.s + door.half];
         const top = floorBase + DOOR.height;
         const faces = [pin.r + st.prim.s * FRAME_PROUD, ...(outerFace ? [pout.r - st.prim.s * FRAME_PROUD] : [])];
@@ -1051,7 +1053,7 @@ function solidWalls(pos: number[], s: SolidCell): void {
         if (r1 - r0 < 1e-6) continue;
         const hb = Math.max(h.y0, floorBase);
         const ht = Math.min(h.y1, y1);
-        for (const r of [r0, r1]) quad(pos, lift(onIn(r), hb), lift(onOut(r), hb), lift(onOut(r), ht), lift(onIn(r), ht), t);
+        for (const r of [r0 > h.s0 + 1e-6 ? null : r0, r1 < h.s1 - 1e-6 ? null : r1]) if (r !== null) quad(pos, lift(onIn(r), hb), lift(onOut(r), hb), lift(onOut(r), ht), lift(onIn(r), ht), t);
         for (const y of [hb > y0 + 1e-6 ? hb : null, ht < y1 - 1e-6 ? ht : null]) {
           if (y !== null) quad(pos, lift(onIn(r0), y), lift(onIn(r1), y), lift(onOut(r1), y), lift(onOut(r0), y), t);
         }
@@ -2758,16 +2760,18 @@ function corridorFloors(layout: Layout, topFloor: number | null): THREE.Object3D
   return out;
 }
 
-/** A bulkhead: a door frame across the corridor, with a sealed door in it. */
-const BULKHEAD = { height: 2.9, post: 0.22, depth: 0.3, frame: 0x3b3f45, door: 0xc9a456, stripe: 0xe0a03a };
-
-/** Bulkheads across the corridors that have them, a quarter or three quarters along each segment (#569). */
+/** Bulkheads across the corridors that have them, a quarter or three quarters along each segment (#569), each a hatch (#614). */
 function bulkheadGates(layout: Layout, topFloor: number | null): THREE.Object3D[] {
   const hole = layout.hole;
   const out: THREE.Object3D[] = [];
-  const frame = material("bulkhead:frame", () => new THREE.MeshStandardMaterial({ color: BULKHEAD.frame, roughness: 0.5, metalness: 0.6 }));
-  const door = material("bulkhead:door", () => new THREE.MeshStandardMaterial({ color: BULKHEAD.door, roughness: 0.6, metalness: 0.3 }));
-  const stripe = material("bulkhead:stripe", () => new THREE.MeshStandardMaterial({ color: BULKHEAD.stripe, roughness: 0.6 }));
+  const { colors } = HATCH;
+  const mats: HatchMaterials = {
+    wall: material("bulkhead:wall", () => new THREE.MeshStandardMaterial({ color: colors.wall, roughness: 0.55, metalness: 0.55 })),
+    rim: material("bulkhead:frame", () => new THREE.MeshStandardMaterial({ color: colors.rim, roughness: 0.5, metalness: 0.6 })),
+    door: material("bulkhead:door", () => new THREE.MeshStandardMaterial({ color: colors.door, roughness: 0.6, metalness: 0.3 })),
+    wheel: material("bulkhead:wheel", () => new THREE.MeshStandardMaterial({ color: colors.wheel, roughness: 0.45, metalness: 0.4 })),
+    stripe: material("bulkhead:stripe", () => new THREE.MeshStandardMaterial({ color: colors.stripe, roughness: 0.6 })),
+  };
   for (const id of Object.keys(layout.bulkheads ?? {})) {
     const along = bulkheadAt(layout, id);
     if (along === null) continue;
@@ -2788,23 +2792,11 @@ function bulkheadGates(layout: Layout, topFloor: number | null): THREE.Object3D[
       a = (e.a0 + (e.a1 - e.a0) * along) * TAU;
       turn = -a; // across an arc: outward
     }
-    const g = new THREE.Group();
-    const w = 2 * HALL;
-    const post = (x: number) => {
-      const m = new THREE.Mesh(new THREE.BoxGeometry(BULKHEAD.post, BULKHEAD.height, BULKHEAD.depth), frame);
-      m.position.set(x, BULKHEAD.height / 2, 0);
-      return m;
-    };
-    const lintel = new THREE.Mesh(new THREE.BoxGeometry(w, BULKHEAD.post, BULKHEAD.depth), frame);
-    lintel.position.set(0, BULKHEAD.height, 0);
-    const panel = new THREE.Mesh(new THREE.BoxGeometry(w - 2 * BULKHEAD.post, BULKHEAD.height - 0.1, BULKHEAD.depth * 0.5), door);
-    panel.position.set(0, (BULKHEAD.height - 0.1) / 2, 0);
-    const band = new THREE.Mesh(new THREE.BoxGeometry(w - 2 * BULKHEAD.post, 0.18, BULKHEAD.depth * 0.6), stripe);
-    band.position.set(0, 1.1, 0);
-    g.add(post(-w / 2 + BULKHEAD.post / 2), post(w / 2 - BULKHEAD.post / 2), lintel, panel, band);
-    g.position.set(r * Math.cos(a), y, r * Math.sin(a));
+    const g = hatchGroup(2 * HALL, mats).group;
+    const [x, z] = [r * Math.cos(a), r * Math.sin(a)];
+    g.position.set(x, y, z);
     g.rotation.y = turn;
-    g.userData = { floor: e.floor };
+    g.userData = { floor: e.floor, hatch: { id, floor: e.floor, x, z } };
     out.push(g);
   }
   return out;
