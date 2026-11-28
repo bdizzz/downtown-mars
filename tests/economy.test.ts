@@ -77,11 +77,11 @@ describe("the 20-colonist start on the critical set", () => {
   });
 
   // The landing kit's two arrays (#609): the spare charges the battery, at a loss.
-  it("uses about 9 of the 20 power made, the rest spare for the battery", () => {
+  it("uses about 9 of the 30 power made, the rest spare for the battery", () => {
     const s = criticalSet();
     days(s, 1);
     const { made, used } = makeSnapshot(s, config).power;
-    expect(made).toBeCloseTo(20);
+    expect(made).toBeCloseTo(30);
     expect(used).toBeGreaterThan(8);
     expect(used).toBeLessThanOrEqual(made);
   });
@@ -137,20 +137,20 @@ describe("rooms", () => {
     // Rings 2 and 3 have the same slots, so a 2×2 there is exactly 4 cells.
     const farm = build(s, "farm", ring(1, 2, 4, 2, 2));
     expect(farm.cells).toHaveLength(4);
-    expect(roomSpec(farm, config).makes.rawFood).toBeCloseTo(12);
+    expect(roomSpec(farm, config).makes.rawFood).toBeCloseTo(16);
     expect(roomSpec(farm, config).staff).toBe(roomDef("farm").staff);
     // From ring 1 into ring 2 (twice the slots) the wedge widens to 2 + 4 cells, and output scales.
     const deep = build(s, "farm", ring(1, 1, 5, 2, 2));
     expect(deep.cells).toHaveLength(6);
-    expect(roomSpec(deep, config).makes.rawFood).toBeCloseTo((12 * 6) / 4);
+    expect(roomSpec(deep, config).makes.rawFood).toBeCloseTo((16 * 6) / 4);
   });
 
   it("crop choice changes yield", () => {
     const s = createInitialState(config);
     const farm = build(s, "farm", ring(1, 1, 1, 4));
-    expect(roomSpec(farm, config).makes.rawFood).toBe(12);
+    expect(roomSpec(farm, config).makes.rawFood).toBe(16);
     applyCommand(s, { type: "setCrop", roomId: farm.id, crop: "soybeans" });
-    expect(roomSpec(farm, config).makes.rawFood).toBe(8);
+    expect(roomSpec(farm, config).makes.rawFood).toBe(11);
   });
 
   it("fiber hemp makes fiber instead of food", () => {
@@ -169,9 +169,9 @@ describe("rooms", () => {
     days(s, 2); // potatoes take 2.5 months
     expect(s.harvested ?? 0).toBe(0);
     days(s, 0.6);
-    // 12 a month for 2.5 months, with its long-grow bonus: at most 12 × 2.5 × 1.08.
-    expect(s.harvested).toBeGreaterThan(25);
-    expect(s.harvested).toBeLessThanOrEqual(32.41);
+    // 16 a month for 2.5 months, with its long-grow bonus: at most 16 × 2.5 × 1.08.
+    expect(s.harvested).toBeGreaterThan(33);
+    expect(s.harvested).toBeLessThanOrEqual(43.21);
     expect(s.milestones!.some((m) => m.id === "first_harvest")).toBe(true);
   });
 

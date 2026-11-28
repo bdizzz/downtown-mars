@@ -77,16 +77,16 @@ describe("the farm's panel and the crop picker (#378)", () => {
     expect(r.ok).toBe(true);
     const room = s.layout.rooms.at(-1)!;
     room.building = false;
-    room.growth = { days: 1.25, banked: 15 };
+    room.growth = { days: 1.25, banked: 20 };
     const h = harvestInfo(room)!;
     expect(h.share).toBeCloseTo(0.5);
-    // 15 so far, 15 to come at the same pace, and potatoes' bonus.
-    expect(h.text).toMatch(/^About 32 raw food in 1\.3 months, all at once/);
+    // 20 so far, 20 to come at the same pace, and potatoes' bonus.
+    expect(h.text).toMatch(/^About 43 raw food in 1\.3 months, all at once/);
     const chip = panelModel(makeSnapshot(s, config), room).headline.find((c) => c.label === "Next harvest")!;
     expect(chip.value).toBe("50%");
     expect(chip.meter).toEqual({ value: 0.5, max: 1 });
     // Half the pace so far: a smaller harvest, and it says so.
-    room.growth = { days: 1.25, banked: 7.5 };
+    room.growth = { days: 1.25, banked: 10 };
     expect(harvestInfo(room)!.slowed).toBe(true);
     expect(harvestInfo(room)!.text).toMatch(/slowed/);
   });
@@ -95,7 +95,7 @@ describe("the farm's panel and the crop picker (#378)", () => {
     const { room } = farm("potatoes");
     const options = cropOptions(room);
     expect(options.find((o) => o.id === "hemp")!.label).toBe("Fiber hemp (fiber): 29 every 4 months");
-    expect(options.find((o) => o.id === "leafyGreens")!.label).toBe("Leafy greens (produce): 11 every 1.5 months");
+    expect(options.find((o) => o.id === "leafyGreens")!.label).toBe("Leafy greens (produce): 14 every 1.5 months");
   });
 });
 
