@@ -13,7 +13,7 @@ const snap = (gameId: number, messages: Message[], floors: number, omenTick: num
 
 describe("sound cues", () => {
   it("every happening plays a known effect, and every message rule names a happening", () => {
-    const sfx = ["click", "build", "demolish", "refuse", "landing", "chime", "alert", "floor", "strain"];
+    const sfx = ["click", "build", "demolish", "refuse", "landing", "chime", "alert", "floor", "strain", "hatchOpen", "hatchClose"];
     for (const v of Object.values(raw.happenings)) expect(v === null || sfx.includes(v)).toBe(true);
     for (const r of raw.messages) expect(r.is in raw.happenings).toBe(true);
   });

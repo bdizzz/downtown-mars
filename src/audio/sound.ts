@@ -2,7 +2,7 @@
 // The AudioContext is created on the first user gesture, as browsers require.
 // Three buses under the master volume: music, effects and ambience, each with its own slider.
 
-export type Sfx = "click" | "build" | "demolish" | "refuse" | "landing" | "chime" | "alert" | "floor" | "strain";
+export type Sfx = "click" | "build" | "demolish" | "refuse" | "landing" | "chime" | "alert" | "floor" | "strain" | "hatchOpen" | "hatchClose";
 
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
@@ -12,6 +12,7 @@ let ambientBus: GainNode | null = null;
 let hum: OscillatorNode | null = null;
 let humGain: GainNode | null = null;
 let noiseBuffer: AudioBuffer | null = null;
+let hissBuffer: AudioBuffer | null = null;
 
 export interface AudioSettings {
   /** Off (a dev build until the player opts in, #539): no audio context is made, nothing plays. */
@@ -46,6 +47,7 @@ export function unlockAudio(): void {
   ambientBus = ctx.createGain();
   ambientBus.connect(master);
   noiseBuffer = makeNoise(ctx);
+  hissBuffer = makeHiss(ctx);
   startAmbient(ctx, ambientBus);
   applySettings();
 }
@@ -90,6 +92,14 @@ function makeNoise(c: AudioContext): AudioBuffer {
     last = (last + 0.02 * white) / 1.02;
     data[i] = last * 3.5;
   }
+  return buf;
+}
+
+/** White noise: air through a seal. */
+function makeHiss(c: AudioContext): AudioBuffer {
+  const buf = c.createBuffer(1, c.sampleRate, c.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
   return buf;
 }
 
@@ -152,6 +162,35 @@ function noise(dur: number, gain: number, cutoff: number, when = 0): void {
   src.stop(t + dur + 0.05);
 }
 
+/** Air rushing through a seal: white noise through a band, swelling in and dying away. */
+function hiss(dur: number, gain: number, centre: number, when = 0): void {
+  if (!ctx || !sfxBus || !hissBuffer) return;
+  const t = ctx.currentTime + when;
+  const src = ctx.createBufferSource();
+  src.buffer = hissBuffer;
+  src.loop = true;
+  const f = ctx.createBiquadFilter();
+  f.type = "bandpass";
+  f.frequency.setValueAtTime(centre, t);
+  f.frequency.exponentialRampToValueAtTime(centre * 0.6, t + dur);
+  f.Q.value = 0.8;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(gain, t + 0.06);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  src.connect(f).connect(g).connect(sfxBus);
+  src.start(t, Math.random() * 0.5);
+  src.stop(t + dur + 0.05);
+}
+
+/** A heavy steel latch: two inharmonic knocks and a thud. */
+function clank(gain: number, when = 0): void {
+  tone(310, 0.16, "square", gain * 0.35, when, 240);
+  tone(487, 0.12, "triangle", gain * 0.5, when + 0.005);
+  tone(90, 0.22, "sine", gain, when, 60);
+  noise(0.08, gain * 1.2, 2200, when);
+}
+
 export function play(sfx: Sfx): void {
   if (!ctx || settings.effects <= 0) return;
   switch (sfx) {
@@ -191,6 +230,16 @@ export function play(sfx: Sfx): void {
       tone(95, 1.4, "sawtooth", 0.07, 0, 62);
       tone(47, 1.6, "sine", 0.25, 0.1, 38);
       noise(1.3, 0.4, 260);
+      break;
+    case "hatchOpen":
+      // A bulkhead's hatch (#614): the latch clanks free, the seal hisses, the door swings.
+      clank(0.22);
+      hiss(0.7, 0.08, 3200, 0.12);
+      break;
+    case "hatchClose":
+      // Shutting: a short hiss as the seal takes, then the latch clanks home.
+      hiss(0.45, 0.06, 2600);
+      clank(0.26, 0.9);
       break;
   }
 }
