@@ -8,7 +8,7 @@ import { gameTime, type GameTime } from "./clock";
 import type { SimConfig } from "./config";
 import { canDig, diggingFloor, drillSpeed, ticksToDig } from "./digging";
 import { beds, padReady } from "./earth";
-import { capacities, powerFlow, type Population, type RoomStatus } from "./economy";
+import { capacities, powerFlow, type PowerFlow, type Population, type RoomStatus } from "./economy";
 import type { EffectField } from "./effects";
 import type { Deposit, DepositKind } from "./mapgeo";
 import { hasStagingBay, kitGoods, kitProgress } from "./founding";
@@ -199,7 +199,7 @@ export interface Snapshot {
   /** Smoothed net change per game day. */
   rates: Record<string, number>;
   /** Power is a flow, so show what's made and used rather than a net rate. */
-  power: { made: number; used: number };
+  power: PowerFlow;
   /** Totals only, never a list of people (#534). */
   population: PopulationView;
   /** Head counts by life stage. */

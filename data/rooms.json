@@ -64,6 +64,7 @@
       "makes": {
         "power": 20
       },
+      "chargePerDay": 15,
       "effects": [],
       "cost": {
         "metal": 10,

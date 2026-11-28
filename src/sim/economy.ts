@@ -199,6 +199,7 @@ export function stepEconomy(state: SimState, cfg: SimConfig): void {
   const rooms = state.layout.rooms.filter(isActive).sort(priorityOrder(cfg));
   const specs = new Map(rooms.map((r) => [r.id, withPowerShare(roomSpec(r, cfg), state, r)]));
   const status: Record<number, RoomStatus> = {};
+  const powerBefore = res.power ?? 0;
 
   // 1. Staff, highest priority first. Rooms the player stood down take no one.
   // Only adults work.
@@ -260,6 +261,10 @@ export function stepEconomy(state: SimState, cfg: SimConfig): void {
   // 3. Colonists.
   stepColonists(state, cfg, dt, mod);
 
+  // What the arrays made beyond what rooms drew straight from them charges the batteries,
+  // only as fast as the charging bandwidth allows, and at a loss (#609).
+  chargeBatteries(state, cfg, powerBefore, dt);
+
   // 4. Storage limits; the excess is lost.
   for (const [id, v] of Object.entries(res)) {
     const cap = caps[id] ?? Infinity;
@@ -269,6 +274,31 @@ export function stepEconomy(state: SimState, cfg: SimConfig): void {
     }
   }
   reconcileFood(state);
+}
+
+/** The hole's charging bandwidth: power a day it can pump from the panels into the batteries. Every working solar array adds its share. */
+export function chargeRate(state: SimState): number {
+  let rate = 0;
+  for (const room of state.layout.rooms) {
+    if (room.planned || room.building || conditionOf(room) <= 0) continue;
+    rate += roomDef(room.type).chargePerDay ?? 0;
+  }
+  return rate;
+}
+
+/** Of the spare power a day, what reaches the batteries: capped at the charging bandwidth, then charging's loss. */
+export function charging(spare: number, rate: number, cfg: SimConfig): number {
+  return Math.min(Math.max(0, spare), rate) * cfg.economy.batteryEfficiency;
+}
+
+/** Only charging is limited and lossy: rooms drawing straight from the arrays, or from the batteries, lose nothing. */
+function chargeBatteries(state: SimState, cfg: SimConfig, before: number, dt: number): void {
+  const res = state.resources;
+  const spare = (res.power ?? 0) - before;
+  if (spare <= 0) return;
+  const into = charging(spare / dt, chargeRate(state), cfg) * dt;
+  res.power = before + into;
+  record(state, "power", "out", LABELS.charging, spare - into);
 }
 
 /** Heaters and radiators draw power by how hard their floor needs them (temperature.ts). */
@@ -507,8 +537,17 @@ export function updateRates(state: SimState, before: Record<string, number>, cfg
   }
 }
 
-/** Power made and used a day, by the rooms running this tick. */
-export function powerFlow(state: SimState, cfg: SimConfig): { made: number; used: number } {
+/** Power made and used a day, by the rooms running this tick; and the batteries' side of the spare (#609). */
+export interface PowerFlow {
+  made: number;
+  used: number;
+  /** The charging bandwidth: what can go into the batteries a day, from all the arrays together. */
+  chargeRate: number;
+  /** What reaches them a day, after the rate cap and charging's loss; 0 while they're full or nothing is spare. */
+  charging: number;
+}
+
+export function powerFlow(state: SimState, cfg: SimConfig): PowerFlow {
   let made = 0;
   let used = 0;
   for (const room of state.layout.rooms) {
@@ -518,5 +557,7 @@ export function powerFlow(state: SimState, cfg: SimConfig): { made: number; used
     made += (spec.makes.power ?? 0) * st.rate;
     used += (spec.uses.power ?? 0) * st.rate;
   }
-  return { made, used };
+  const rate = chargeRate(state);
+  const full = (state.resources.power ?? 0) >= (capacities(state, cfg).power ?? 0) - 1e-6;
+  return { made, used, chargeRate: rate, charging: full ? 0 : charging(made - used, rate, cfg) };
 }

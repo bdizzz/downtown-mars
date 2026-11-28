@@ -108,6 +108,8 @@ export interface SimConfig {
     nominalSlots: Record<string, number>;
     /** What becomes of clean water once used, unless a room says otherwise (rooms.json returnsWater): its share as each kind of wastewater. */
     waterReturns: Record<string, number>;
+    /** Share of the spare power sent into the batteries that they keep; the rest is lost in charging (#609). */
+    batteryEfficiency: number;
   };
   air: AirConfig;
   weather: {

@@ -6,6 +6,7 @@ import { DIAGNOSIS, type CauseDef } from "../sim/diagnosis";
 import { isStorable } from "../sim/storage";
 import { daysLeft, hoursText, num, resName, signed } from "../ui/format";
 import { monthsText } from "./months";
+import { chargingNote } from "./power";
 import { isIcon, type IconId } from "./icons";
 
 // The top of the screen as data: the resource grid's cells (icon, value, trend arrow, how worried to
@@ -421,6 +422,7 @@ export function barItems(s: Snapshot): BarItem[][] {
       notes: [
         `Used ${num(used)} of ${num(made)} made a month`,
         `Battery ${num(battery)} of ${num(s.capacities.power ?? 0)}`,
+        ...[chargingNote(s.power, battery >= (s.capacities.power ?? 0) - 0.01)].filter((n): n is string => !!n),
         ...(sunNote ? [sunNote] : []),
         ...(flatByDawn ? ["The battery won't last till the sun is up: build battery banks, or more solar arrays to fill them by day"] : []),
       ],

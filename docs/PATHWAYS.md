@@ -6,6 +6,7 @@ Each pathway follows one resource family from its source to the rooms that use i
 
 | Pathway | In the game |
 | --- | --- |
+| Power | Solar arrays by day, battery banks by night (charging bandwidth from the arrays, half lost, #609); geothermal on a pocket |
 | Water | Complete loop: deep well pump, tanks, recycler, restrooms, composter |
 | Air | Complete: CO2 scrubbers, electrolyzers, gas tanks and plants |
 | Food | Farms (crops) → galley, or kitchen plus canteen → colonists; Earth rations fill gaps. No cultured meat |
@@ -15,6 +16,12 @@ Each pathway follows one resource family from its source to the rooms that use i
 | Plastics, consumer goods, beer | Not yet |
 | Waste | Organic and black water to soil (composter); gray water recycled; solid waste to metal and brick (recycling center); waste storage |
 | Upkeep (new) | Maintenance uses machinery; cleaning services turn clean water into gray water |
+
+## Power
+
+**Flow:** solar arrays (by day), geothermal plants, later reactors → power, one shared pool → every room that uses it, straight from the source → what's spare → battery banks → rooms by night, during storms and when demand spikes.
+
+**As built (#609):** rooms use what the arrays make first, losslessly. Only the spare goes into the batteries, and only as fast as the hole's **charging bandwidth**, the power a month it can pump from panels into batteries: each solar array adds 15 (`chargePerDay` in `rooms.json`). The batteries keep half of what goes in (`economy.batteryEfficiency` in `config.json`); each one's only other limit is what it holds (50). What's beyond the bandwidth, the half lost charging, and anything spare once they're full shows in the Flows panel as "Lost charging" or "Unused". Drawing from the batteries is free and unlimited. So more arrays both make more and widen the bandwidth to soak up a sunny surplus; batteries decide only how much can be kept. The landing kit brings two arrays and one battery.
 
 ## Water
 

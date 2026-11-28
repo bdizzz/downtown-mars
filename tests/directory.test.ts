@@ -22,7 +22,7 @@ describe("the floor directory (T-149)", () => {
     const s = makeSnapshot(st, config);
     expect(directoryCategories(s).map((c) => c.id)).toContain("power");
     const power = directory(s, { ...NO_FILTER, category: "power" });
-    expect(power.flatMap((f) => f.rooms.map((r) => r.name)).sort()).toEqual(["Battery bank", "Solar array"]);
+    expect(power.flatMap((f) => f.rooms.map((r) => r.name)).sort()).toEqual(["Battery bank", "Solar array", "Solar array"]);
     expect(ids(directory(s, { ...NO_FILTER, text: "BATTERY" }))).toEqual([st.layout.rooms.find((r) => r.type === "battery_bank")!.id]);
     expect(directory(s, { ...NO_FILTER, problems: true })).toEqual([]);
   });

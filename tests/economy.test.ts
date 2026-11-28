@@ -76,11 +76,12 @@ describe("the 20-colonist start on the critical set", () => {
     expect(snap.air.co2Pct).toBeLessThan(config.air.co2Harmful);
   });
 
-  it("runs power nearly full: about 9 of 10", () => {
+  // The landing kit's two arrays (#609): the spare charges the battery, at a loss.
+  it("uses about 9 of the 20 power made, the rest spare for the battery", () => {
     const s = criticalSet();
     days(s, 1);
     const { made, used } = makeSnapshot(s, config).power;
-    expect(made).toBeCloseTo(10);
+    expect(made).toBeCloseTo(20);
     expect(used).toBeGreaterThan(8);
     expect(used).toBeLessThanOrEqual(made);
   });

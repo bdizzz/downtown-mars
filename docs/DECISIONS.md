@@ -494,3 +494,13 @@ Talked through with Bryon (Nov 12) and built as one PR (#394–#406).
 
 - One scheme in Build and out, after Google Maps 3D (Bryon, Nov 22): ⌘ or Ctrl and drag turns and tilts the 3D view, Shift and drag pans; a plain drag keeps doing what it did (turning, or snaking corridors). While ⌘ or Ctrl is held with a tool in hand, the ghost hides and a click doesn't place: let go and the tool is back.
 - The corridor tool keeps Shift for filling in; there ⌘ or Ctrl with Shift and drag pans (Bryon, Nov 23). The tool bar names the keys.
+
+## Decided for battery charging (Nov 28, #609)
+
+Bryon: how fast batteries charge should depend on how many arrays and batteries you have, and charging runs at 50% efficiency compared with rooms using the arrays' power directly.
+
+- **Charging is limited by bandwidth only** (Bryon, Nov 28): how much the hole can pump from its panels into its batteries. Each working solar array adds `chargePerDay` (15 a month, `rooms.json`); batteries add none (Bryon, Nov 28) and have no intake cap of their own besides what they hold (50). Power into storage each tick is min(spare, rate) × `economy.batteryEfficiency` (0.5); the rest is lost, recorded as "Lost charging".
+- **Discharging is free and unlimited**, as before. Rooms drawing straight from the arrays lose nothing.
+- **15 an array:** at 20 (what an array makes at full sun) the cap could never bind. At 15 it bites only when the arrays make well beyond what rooms use (the kit's two arrays give 30, against about 39 spare on day one); at 10 the bots' month went dark by night, needing about a third more arrays. A first try with only batteries counting (20 each) starved the bots' single battery the same way.
+- **The landing kits bring a second solar array** (surface slot 3), since halving what reaches the batteries means the night needs about twice the spare. Battery capacity (50) and solar output (20 at full sun) stay as they were.
+
