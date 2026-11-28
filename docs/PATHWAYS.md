@@ -6,6 +6,7 @@ Each pathway follows one resource family from its source to the rooms that use i
 
 | Pathway | In the game |
 | --- | --- |
+| Power | Solar arrays by day, battery banks by night (charging capped and lossy, #609); geothermal on a pocket |
 | Water | Complete loop: deep well pump, tanks, recycler, restrooms, composter |
 | Air | Complete: CO2 scrubbers, electrolyzers, gas tanks and plants |
 | Food | Farms (crops) → galley, or kitchen plus canteen → colonists; Earth rations fill gaps. No cultured meat |
@@ -15,6 +16,12 @@ Each pathway follows one resource family from its source to the rooms that use i
 | Plastics, consumer goods, beer | Not yet |
 | Waste | Organic and black water to soil (composter); gray water recycled; solid waste to metal and brick (recycling center); waste storage |
 | Upkeep (new) | Maintenance uses machinery; cleaning services turn clean water into gray water |
+
+## Power
+
+**Flow:** solar arrays (by day), geothermal plants, later reactors → power, one shared pool → every room that uses it, straight from the source → what's spare → battery banks → rooms by night, during storms and when demand spikes.
+
+**As built (#609):** rooms use what the arrays make first, losslessly. Only the spare goes into the batteries, and only as fast as they take it: each battery bank takes up to 100 a month (`chargePerDay` in `rooms.json`), all of them added up, and keeps half of what goes in (`economy.batteryEfficiency` in `config.json`). What's beyond their rate, the half lost charging, and anything spare once they're full shows in the Flows panel as "Lost charging" or "Unused". Drawing from the batteries is free and unlimited. So more batteries soak up a sunny surplus faster, and more arrays let more rooms draw direct and waste less. The landing kit brings two arrays and one battery.
 
 ## Water
 

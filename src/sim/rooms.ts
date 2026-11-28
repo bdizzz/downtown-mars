@@ -32,6 +32,8 @@ export interface RoomDef {
   uses: Record<string, number>;
   makes: Record<string, number>;
   stores?: Record<string, number>;
+  /** Power a day this battery can take in from the arrays' surplus (#609); config's batteryEfficiency of it is kept. */
+  chargePerDay?: number;
   houses?: number;
   effects: EffectDef[];
   cost: Record<string, number>;

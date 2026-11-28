@@ -494,3 +494,13 @@ Talked through with Bryon (Nov 12) and built as one PR (#394–#406).
 
 - One scheme in Build and out, after Google Maps 3D (Bryon, Nov 22): ⌘ or Ctrl and drag turns and tilts the 3D view, Shift and drag pans; a plain drag keeps doing what it did (turning, or snaking corridors). While ⌘ or Ctrl is held with a tool in hand, the ghost hides and a click doesn't place: let go and the tool is back.
 - The corridor tool keeps Shift for filling in; there ⌘ or Ctrl with Shift and drag pans (Bryon, Nov 23). The tool bar names the keys.
+
+## Decided for battery charging (Nov 28, #609)
+
+Bryon: how fast batteries charge should depend on how many arrays and batteries you have, and charging runs at 50% efficiency compared with rooms using the arrays' power directly.
+
+- **Each battery bank has its own charge rate** (`chargePerDay` in `rooms.json`, 100 a month), and the hole's rate is all its working banks' added up (built, not at 0% condition). The arrays supply the spare; the batteries cap how fast it goes in. Power into storage each tick is min(spare, rate) × `economy.batteryEfficiency` (0.5); the rest is lost, recorded as "Lost charging".
+- **Discharging is free and unlimited**, as before. Rooms drawing straight from the arrays lose nothing.
+- **The rate is 100, not lower:** with the bots' one battery through a whole first month, a rate of 20 let it keep only 5 a day and the playthroughs ran out of water by night (recyclers dark). At 100 one bank keeps up to a full charge in a sunny half-day; the cap starts to bite past about five arrays per bank.
+- **The landing kits bring a second solar array** (surface slot 3), since halving what reaches the batteries means the night needs about twice the spare. Battery capacity (50) and solar output (20 at full sun) stay as they were.
+

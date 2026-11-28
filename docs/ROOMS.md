@@ -142,7 +142,7 @@ Each farm grows one crop at a time, chosen by the player. Some feed people, othe
 | Room | Size | Staff | Uses | Makes | Neighbor effects | Build cost | Unlock |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Solar array | Surface | 1 | — | Power 20 by day, none at night (10 on average), less in storms | — | M 10, E 4 | Start |
-| Battery bank | S | 0 | — | Stores 50 power | — | M 5, E 5 | Start |
+| Battery bank | S | 0 | — | Stores 50 power; charges at up to 100 a month from spare power, keeping half (#609) | — | M 5, E 5 | Start |
 | Geothermal plant | L | 3 | Water 2 | Power 25 | Noise −1 r1, heat +1 r1 | M 30, Mc 8, E 4 | A geothermal pocket at the bottom of the hole (#390): the `geothermal` gate, the only way |
 | Reactor | H | 8 | Water 4 | Power 100 | Noise −2 r2, comfort −2 r3 | M 60, Mc 15, E 15 | Mid-game milestone |
 

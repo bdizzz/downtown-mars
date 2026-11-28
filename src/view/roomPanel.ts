@@ -1,6 +1,7 @@
 import { cropMakes, farmCrop, harvestProgress, harvestSize } from "../sim/food";
 import { cropDefs } from "../sim/resources";
 import { monthsText } from "./months";
+import { chargingLoss, chargingNote } from "./power";
 import { config } from "../sim/config";
 import { amenityFelt, reachOf } from "../sim/amenities";
 import { holding, mainOutput, roomSpec } from "../sim/economy";
@@ -475,6 +476,13 @@ function panelEntries(s: Snapshot, room: RoomInstance): Entry[] {
       harvestRow(room),
       flows("Scrubs/month", spec.scrubs),
       flows("Stores", spec.stores),
+      def.chargePerDay
+        ? {
+            k: "Charges",
+            text: `up to ${num(def.chargePerDay)}/month, ${chargingLoss()} lost`,
+            tip: chargingNote(s.power, (s.resources.power ?? 0) >= (s.capacities.power ?? 0) - 0.01) ?? "Nothing spare to charge with: the arrays are all in use, or the sun is down",
+          }
+        : null,
       ...climateRows(s, room),
     ]),
     ...tagged("after", "home", def.houses ? homeRows(s, room.id, def.houses) : []),

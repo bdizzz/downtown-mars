@@ -67,7 +67,9 @@
     "rateSmoothingDays": 0.25,
     "ledgerDays": 4,
     "nominalSlots": { "S": 1, "M": 2, "L": 4, "H": 8 },
-    "waterReturns": { "grayWater": 1 }
+    "waterReturns": { "grayWater": 1 },
+    "_note": "batteryEfficiency: share of the spare power sent into the batteries that they keep; rooms using power straight from the arrays lose nothing (#609). How fast they take it is each battery bank's chargePerDay (rooms.json).",
+    "batteryEfficiency": 0.5
   },
   "air": {
     "_note": "The hole's air as a mix over its living volume (PLAN-M16). Levels are % of the air; amounts are volume (m3) x unitsPerM3.",
@@ -196,14 +198,15 @@
     "commitAlong": 0.25
   },
   "landingKits": {
-    "_note": "What the landing crew sets up before the game starts (T-164). A new game's first hole gets newGame's kit, so a newcomer's air, water and power already work; holes founded later get laterHoles' (their seed kit brings the rest). Difficulty (F-014) will give hard the bare kit, and offer it on normal as a veteran start. The full kit brings a heater for floor 1 (#403); a founded hole's seed kit brings one, set up on arrival (founding.ts). A ring room's holds sets what a tank holds, and material its lining (the entrance comes lined in marscrete, #563); the crew lays a corridor along the fronts of rooms nothing reaches, and the shortest spoke in to it.",
+    "_note": "What the landing crew sets up before the game starts (T-164). A new game's first hole gets newGame's kit, so a newcomer's air, water and power already work; holes founded later get laterHoles' (their seed kit brings the rest). Difficulty (F-014) will give hard the bare kit, and offer it on normal as a veteran start. Both kits bring two solar arrays, since batteries keep only half of what they charge with (#609). The full kit brings a heater for floor 1 (#403); a founded hole's seed kit brings one, set up on arrival (founding.ts). A ring room's holds sets what a tank holds, and material its lining (the entrance comes lined in marscrete, #563); the crew lays a corridor along the fronts of rooms nothing reaches, and the shortest spoke in to it.",
     "newGame": "full",
     "laterHoles": "bare",
     "bare": {
       "surface": [
         { "room": "landing_pod", "slot": 10 },
         { "room": "landing_pad", "slot": 1 },
-        { "room": "solar_array", "slot": 4 }
+        { "room": "solar_array", "slot": 4 },
+        { "room": "solar_array", "slot": 3 }
       ],
       "ring": [
         { "room": "entrance", "floor": 1, "ring": 1, "slot": 0, "material": "marscrete" },
@@ -214,7 +217,8 @@
       "surface": [
         { "room": "landing_pod", "slot": 10 },
         { "room": "landing_pad", "slot": 1 },
-        { "room": "solar_array", "slot": 4 }
+        { "room": "solar_array", "slot": 4 },
+        { "room": "solar_array", "slot": 3 }
       ],
       "ring": [
         { "room": "entrance", "floor": 1, "ring": 1, "slot": 0, "material": "marscrete" },

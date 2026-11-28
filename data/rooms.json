@@ -899,6 +899,7 @@
       "stores": {
         "power": 50
       },
+      "chargePerDay": 100,
       "effects": [],
       "cost": {
         "metal": 5,

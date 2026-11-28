@@ -32,6 +32,8 @@ export const LABELS = {
   /** People's own water: drinking, washing, cooking at home. */
   household: "Drinking and washing",
   lost: "Overflow",
+  /** Spare solar the batteries couldn't take, or lost in charging them (#609). */
+  charging: "Lost charging",
   /** Gas tanks as ballast (air.ts): the air's side and the tanks' side of each move. */
   fromTanks: "From tanks",
   toTanks: "Into tanks",
