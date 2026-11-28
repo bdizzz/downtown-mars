@@ -64,6 +64,7 @@
       "makes": {
         "power": 20
       },
+      "chargePerDay": 10,
       "effects": [],
       "cost": {
         "metal": 10,
@@ -899,7 +900,7 @@
       "stores": {
         "power": 50
       },
-      "chargePerDay": 100,
+      "chargePerDay": 10,
       "effects": [],
       "cost": {
         "metal": 5,

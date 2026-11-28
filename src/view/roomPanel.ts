@@ -478,8 +478,8 @@ function panelEntries(s: Snapshot, room: RoomInstance): Entry[] {
       flows("Stores", spec.stores),
       def.chargePerDay
         ? {
-            k: "Charges",
-            text: `up to ${num(def.chargePerDay)}/month, ${chargingLoss()} lost`,
+            k: "Charging",
+            text: `adds ${num(def.chargePerDay)}/month of bandwidth, ${chargingLoss()} lost`,
             tip: chargingNote(s.power, (s.resources.power ?? 0) >= (s.capacities.power ?? 0) - 0.01) ?? "Nothing spare to charge with: the arrays are all in use, or the sun is down",
           }
         : null,

@@ -262,7 +262,7 @@ export function stepEconomy(state: SimState, cfg: SimConfig): void {
   stepColonists(state, cfg, dt, mod);
 
   // What the arrays made beyond what rooms drew straight from them charges the batteries,
-  // only as fast as the batteries take it, and at a loss (#609).
+  // only as fast as the charging bandwidth allows, and at a loss (#609).
   chargeBatteries(state, cfg, powerBefore, dt);
 
   // 4. Storage limits; the excess is lost.
@@ -276,7 +276,7 @@ export function stepEconomy(state: SimState, cfg: SimConfig): void {
   reconcileFood(state);
 }
 
-/** Power the hole's batteries can take in a day: each working battery bank's charge rate, added up. */
+/** The hole's charging bandwidth: power a day it can pump from the panels into the batteries. Every working battery bank and solar array adds its share. */
 export function chargeRate(state: SimState): number {
   let rate = 0;
   for (const room of state.layout.rooms) {
@@ -286,7 +286,7 @@ export function chargeRate(state: SimState): number {
   return rate;
 }
 
-/** Of the spare power a day, what reaches the batteries: capped at their charge rate, then charging's loss. */
+/** Of the spare power a day, what reaches the batteries: capped at the charging bandwidth, then charging's loss. */
 export function charging(spare: number, rate: number, cfg: SimConfig): number {
   return Math.min(Math.max(0, spare), rate) * cfg.economy.batteryEfficiency;
 }
@@ -541,7 +541,7 @@ export function updateRates(state: SimState, before: Record<string, number>, cfg
 export interface PowerFlow {
   made: number;
   used: number;
-  /** What the batteries could take in a day, all of them together. */
+  /** The charging bandwidth: what can go into the batteries a day, from all the batteries and arrays together. */
   chargeRate: number;
   /** What reaches them a day, after the rate cap and charging's loss; 0 while they're full or nothing is spare. */
   charging: number;

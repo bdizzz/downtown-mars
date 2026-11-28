@@ -14,6 +14,6 @@ export function chargingNote(p: PowerFlow, full: boolean): string | null {
   if (spare <= 0.01) return null;
   if (p.chargeRate <= 0) return `${num(spare)} a month spare, with no battery bank to take it`;
   if (full) return `Battery full: ${num(spare)} a month spare goes to waste`;
-  const capped = spare > p.chargeRate + 0.01 ? `; the batteries take only ${num(p.chargeRate)}` : "";
+  const capped = spare > p.chargeRate + 0.01 ? `; only ${num(p.chargeRate)} fits through the charging lines` : "";
   return `Charging ${num(p.charging)} a month of ${num(spare)} spare${capped}, ${chargingLoss()} lost to charging`;
 }

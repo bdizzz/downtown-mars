@@ -499,8 +499,8 @@ Talked through with Bryon (Nov 12) and built as one PR (#394–#406).
 
 Bryon: how fast batteries charge should depend on how many arrays and batteries you have, and charging runs at 50% efficiency compared with rooms using the arrays' power directly.
 
-- **Each battery bank has its own charge rate** (`chargePerDay` in `rooms.json`, 100 a month), and the hole's rate is all its working banks' added up (built, not at 0% condition). The arrays supply the spare; the batteries cap how fast it goes in. Power into storage each tick is min(spare, rate) × `economy.batteryEfficiency` (0.5); the rest is lost, recorded as "Lost charging".
+- **Charging is limited by bandwidth only** (Bryon, Nov 28): how much the hole can pump from its panels into its batteries, which scales with both. Each working battery bank and solar array adds `chargePerDay` (10 a month each, `rooms.json`); a battery has no intake cap of its own besides what it holds (50). Power into storage each tick is min(spare, rate) × `economy.batteryEfficiency` (0.5); the rest is lost, recorded as "Lost charging".
 - **Discharging is free and unlimited**, as before. Rooms drawing straight from the arrays lose nothing.
-- **The rate is 100, not lower:** with the bots' one battery through a whole first month, a rate of 20 let it keep only 5 a day and the playthroughs ran out of water by night (recyclers dark). At 100 one bank keeps up to a full charge in a sunny half-day; the cap starts to bite past about five arrays per bank.
+- **10 each, not 20 for arrays:** an array adding as much bandwidth as it makes (20 at full sun) would mean the cap never binds. At 10, the landing kit (one battery, two arrays: 30) is just short of its first days' spare, and a grown hole needs more batteries or arrays to soak up a sunny surplus. A first try with only batteries counting (20 each) starved the bots' single battery: the playthroughs ran out of water by night.
 - **The landing kits bring a second solar array** (surface slot 3), since halving what reaches the batteries means the night needs about twice the spare. Battery capacity (50) and solar output (20 at full sun) stay as they were.
 
