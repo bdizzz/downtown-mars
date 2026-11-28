@@ -50,9 +50,9 @@ describe("harvest cycles", () => {
     expect(s.resources.rawFood ?? 0).toBe(before);
     expect(harvestProgress(farm, 7)!.share).toBeGreaterThan(0.9);
     days(s, 0.2);
-    // 7 a month for 1.5 months, no bonus, at whatever rate the farm ran.
-    expect(s.harvested).toBeGreaterThan(7 * 1.5 * 0.8);
-    expect(s.harvested).toBeLessThanOrEqual(7 * 1.5 + 1e-6);
+    // 9.5 a month for 1.5 months, no bonus, at whatever rate the farm ran.
+    expect(s.harvested).toBeGreaterThan(9.5 * 1.5 * 0.8);
+    expect(s.harvested).toBeLessThanOrEqual(9.5 * 1.5 + 1e-6);
     expect(s.food?.types.leafyGreens).toBeGreaterThan(0);
     expect(farm.growth!.harvests).toBe(1);
     expect(farm.growth!.days).toBeLessThan(0.2);
@@ -116,9 +116,9 @@ describe("harvest cycles", () => {
     const f = hole.layout.rooms.find((r) => r.id === farm.id)!;
     expect(f.growth!.days).toBeCloseTo(cropDef("potatoes").growMonths / 2);
     expect(f.growth!.banked).toBeGreaterThan(0);
-    // Potatoes make 12 a month, soybeans 8: 24 and 16 of the 40.
-    expect(hole.food!.types.potatoes).toBeCloseTo(24);
-    expect(hole.food!.types.soybeans).toBeCloseTo(16);
+    // Potatoes make 16 a month, soybeans 11: 40 split 16:11.
+    expect(hole.food!.types.potatoes).toBeCloseTo((40 * 16) / 27);
+    expect(hole.food!.types.soybeans).toBeCloseTo((40 * 11) / 27);
     expect(hole.food!.meals[FOOD.unknownMeals]).toBeCloseTo(10);
   });
 });
