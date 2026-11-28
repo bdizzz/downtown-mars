@@ -190,6 +190,9 @@ export function App() {
   const [tutorialOn, setTutorialOn] = useState(() => !tutorialHidden());
   const [flags, setFlags] = useState<UiFlags>({ sawNoise: false, openedFlows: false, sawThreeD: false, sawTemperature: false });
   const [settings, updateSettings] = useSettings();
+  // The camera you were in before first person, for its way out (#617): Free view unless it was the cutaway.
+  const beforeWalk = useRef<View3d["camera"]>("iso");
+  if (settings.view3d.camera !== "walk") beforeWalk.current = settings.view3d.camera;
   // Every temperature on screen reads in the player's units (view/temperature.ts).
   setTemperatureUnits(settings.celsius ? "C" : "F");
   /**
@@ -864,11 +867,26 @@ export function App() {
           {/* Building: the rail down the left edge, always there to open (not while walking, or over the map). */}
           {/* In the office, the rail's place holds the way out (#568). */}
           {snapshot && officeOpen && !walking && !mapOpen && (
-            <div className="build-rail office-leave" data-anchor="side">
+            <div className="build-rail rail-leave" data-anchor="side">
               <div className="rail" role="toolbar" aria-label="Office">
                 <button className="rail-btn" onClick={() => setPanel(null)} title="Leave the office: back to the hole as you left it (Esc)">
                   <Icon id="close" size={20} />
                   <span className="label">Leave office</span>
+                </button>
+              </div>
+            </div>
+          )}
+          {/* In first person, the rail's place holds the way out (#617). */}
+          {snapshot && walking && !officeOpen && !mapOpen && (
+            <div className="build-rail rail-leave" data-anchor="side">
+              <div className="rail" role="toolbar" aria-label="First person">
+                <button
+                  className="rail-btn"
+                  onClick={() => updateSettings({ view3d: { ...settings.view3d, camera: beforeWalk.current } })}
+                  title={`Leave first person: back to ${beforeWalk.current === "cutaway" ? "the cutaway" : "Free view"}`}
+                >
+                  <Icon id="close" size={20} />
+                  <span className="label">Exit first person</span>
                 </button>
               </div>
             </div>
