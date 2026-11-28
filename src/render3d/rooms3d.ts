@@ -1008,7 +1008,8 @@ function solidWalls(pos: number[], s: SolidCell): void {
           if (a1 - a0 < 1e-9) continue;
           const hb = Math.max(h.y0, floorBase);
           const ht = Math.min(h.y1, y1);
-          for (const a of [a0, a1]) quad(pos, at(lo, a, hb), at(hi, a, hb), at(hi, a, ht), at(lo, a, ht), follow);
+          // A side only where the opening really ends: a wall built in stretches can meet mid-doorway (#613).
+          for (const a of [a0 > h.a0 + 1e-9 ? null : a0, a1 < h.a1 - 1e-9 ? null : a1]) if (a !== null) quad(pos, at(lo, a, hb), at(hi, a, hb), at(hi, a, ht), at(lo, a, ht), follow);
           if (hb > y0 + 1e-6) arcBand(pos, lo, [a0, a1], hi, [a0, a1], hb, follow);
           if (ht < y1 - 1e-6) arcBand(pos, lo, [a0, a1], hi, [a0, a1], ht, follow);
         }
@@ -1021,7 +1022,7 @@ function solidWalls(pos: number[], s: SolidCell): void {
         if (b - a > 1e-6) curvedFace(parts.glass, rGlass, a, b, pane.y0, pane.y1, glassCut(st));
       }
       const door = holes.door;
-      if (door && door.s > rangeIn[0] && door.s < rangeIn[1]) {
+      if (door && door.s >= rangeIn[0] && door.s < rangeIn[1]) {
         const [d0, d1] = [door.s - door.half, door.s + door.half];
         const top = floorBase + DOOR.height;
         const faces = [pin.r + st.prim.s * FRAME_PROUD, ...(outerFace ? [pout.r - st.prim.s * FRAME_PROUD] : [])];
@@ -1051,7 +1052,7 @@ function solidWalls(pos: number[], s: SolidCell): void {
         if (r1 - r0 < 1e-6) continue;
         const hb = Math.max(h.y0, floorBase);
         const ht = Math.min(h.y1, y1);
-        for (const r of [r0, r1]) quad(pos, lift(onIn(r), hb), lift(onOut(r), hb), lift(onOut(r), ht), lift(onIn(r), ht), t);
+        for (const r of [r0 > h.s0 + 1e-6 ? null : r0, r1 < h.s1 - 1e-6 ? null : r1]) if (r !== null) quad(pos, lift(onIn(r), hb), lift(onOut(r), hb), lift(onOut(r), ht), lift(onIn(r), ht), t);
         for (const y of [hb > y0 + 1e-6 ? hb : null, ht < y1 - 1e-6 ? ht : null]) {
           if (y !== null) quad(pos, lift(onIn(r0), y), lift(onIn(r1), y), lift(onOut(r1), y), lift(onOut(r0), y), t);
         }
